@@ -1,0 +1,8 @@
+[project]
+name = "cyberprotech-toolkit"
+version = "0.1.0"
+description = "Security Toolkit do CyberProtech Web Security Lab (uso educacional, ambiente controlado)."
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["src"]
