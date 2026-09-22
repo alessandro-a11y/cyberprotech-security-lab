@@ -1,0 +1,41 @@
+# Segredos / ambiente local (nunca versionar credenciais reais).
+.env
+*.env
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+
+# Node / Vite
+node_modules/
+dist/
+dist-ssr/
+*.local
+vite.config.*.timestamp*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# PostgreSQL / dados locais
+pgdata/
+*.dump
+*.sql.gz
+
+# Relatórios gerados pelo toolkit
+report.json
+reports/
+
+# SO / editores
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
