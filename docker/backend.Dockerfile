@@ -8,6 +8,11 @@ RUN dotnet restore "API/API.csproj" \
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
+# A imagem de runtime nao traz wget nem curl, e sem um deles o healthcheck do
+# Compose falha sempre. O curl serve apenas ao healthcheck.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl \
+ && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/publish ./
 EXPOSE 8080
 # Porta interna 8080 (padrão das imagens ASP.NET 8). Mapeada no docker-compose.

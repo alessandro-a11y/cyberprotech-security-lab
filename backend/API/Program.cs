@@ -1,10 +1,25 @@
+using API.Endpoints;
+using API.Infrastructure;
 using Infrastructure;
+using Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+// Health checks: "database" é o único verificado em /api/health/ready.
+builder.Services
+    .AddHealthChecks()
+        .AddNpgSql(
+            builder.Configuration.GetConnectionString("DefaultConnection")
+            ?? AppDbContextFactory.FallbackConnectionString,
+        name: "database",
+        tags: ["database"]);
 
 // DbContext (PostgreSQL) + repositórios.
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -18,6 +33,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Aplica migrations pendentes e popula o seed antes de atender requisições.
+await app.Services.InitializeDatabaseAsync(app.Configuration);
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -25,6 +46,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors(frontendPolicy);
+
+app.MapHealthEndpoints();
 app.MapControllers();
 
 app.Run();
