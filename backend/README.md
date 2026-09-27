@@ -7,10 +7,10 @@ para o desenho geral do laboratório.
 
 ```text
 backend/
-├── API/            -> HTTP: controllers, endpoints de health, middleware, DI, Swagger
+├── API/            -> HTTP: controllers, endpoints de health, handler de erros, DI, Swagger
 ├── Application/    -> DTOs e interfaces (contratos; não depende de Infrastructure)
 ├── Domain/         -> entidades
-└── Infrastructure/ -> EF Core + Npgsql: AppDbContext, migrations, repositórios, seed
+└── Infrastructure/ -> EF Core + Npgsql, segurança (BCrypt, JWT), seed
 ```
 
 Dependências apontam para dentro: `API -> Application, Infrastructure` e
@@ -39,6 +39,20 @@ com seis usuários de exemplo. Para desligar esse comportamento:
 ```json
 "Database": { "MigrateOnStartup": false, "Seed": false }
 ```
+
+## Usuários de exemplo
+
+Todos compartilham a senha definida em `Seed:Password`
+(`CyberProtech@2026` por padrão).
+
+| Usuário      | Papel |
+|--------------|-------|
+| `admin`      | Admin |
+| `carla.admin`| Admin |
+| `aluno01`    | User  |
+| `maria.souza`| User  |
+| `joao.lima`  | User  |
+| `pedro.alves`| User  |
 
 ## Migrations
 
@@ -70,18 +84,62 @@ dotnet ef migrations script --project Infrastructure --startup-project API --ide
 A `AppDbContextFactory` (design-time) constrói o contexto sem subir a API,
 então nenhum desses comandos precisa de conexão válida para *gerar* código.
 
-## Endpoints (Fase 1)
+## Endpoints
 
-| Método | Rota                    | Descrição                                  |
-|--------|-------------------------|--------------------------------------------|
-| GET    | `/api/health`            | Liveness. Não toca no banco.               |
-| GET    | `/api/health/ready`      | Readiness. 503 se o PostgreSQL falhar.     |
-| GET    | `/api/users`             | Lista usuários.                            |
-| GET    | `/api/users?search=`     | Filtra por usuário ou e-mail.              |
-| GET    | `/api/users/{id:guid}`   | Um usuário. 404 se não existir.            |
+| Método | Rota                    | Acesso     | Descrição                          |
+|--------|-------------------------|------------|------------------------------------|
+| POST   | `/api/auth/register`    | público    | Cadastra e devolve token           |
+| POST   | `/api/auth/login`       | público    | Autentica e devolve token          |
+| GET    | `/api/auth/me`          | logado     | Usuário do token                   |
+| GET    | `/api/users`            | logado     | Lista / busca                      |
+| GET    | `/api/users/{id}`       | dono/Admin | Um usuário                         |
+| PUT    | `/api/users/{id}`       | Admin      | Atualiza a bio                     |
+| DELETE | `/api/users/{id}`       | Admin      | Remove                             |
+| GET    | `/api/health`           | público    | Liveness (não toca no banco)       |
+| GET    | `/api/health/ready`     | público    | Readiness (503 se o banco falhar)  |
 
-Sem autenticação nesta fase — isso chega na `Fase 2`. `UserDto` nunca expõe
-o `PasswordHash`, e erros voltam como ProblemDetails sem stack trace.
+O token vai no header: `Authorization: Bearer <token>`.
+
+## Autenticação
+
+- **Senha:** BCrypt custo 12, com sal aleatório por senha. O custo está em
+  `Infrastructure/Security/BcryptPasswordHasher.cs`; o contrato
+  `IPasswordHasher` existe para permitir a troca por Argon2id sem tocar nos
+  controllers.
+- **JWT:** HS256, validando emissor, audiência, assinatura e validade
+  (`Jwt:Issuer`, `Jwt:Audience`, `Jwt:ExpirationMinutes`).
+- **Papéis:** `Admin` e `User`, em policies nomeadas
+  (`API/Infrastructure/AuthorizationPolicies.cs`).
+
+### Configuração de produção
+
+| Chave                     | Como definir                | Observação                          |
+|---------------------------|-----------------------------|-------------------------------------|
+| `Jwt:SigningKey`          | `Jwt__SigningKey`           | Mínimo 32 caracteres; a API não sobe com chave curta ou vazia |
+| `Seed:Password`           | `Seed__Password`            | Senha dos usuários de exemplo      |
+| `ConnectionStrings:DefaultConnection` | `ConnectionStrings__DefaultConnection` | Banco |
+
+A chave e a senha do `.env.example` são de laboratório. Gere uma chave por
+ambiente com `openssl rand -base64 48`.
+
+## Decisões de segurança desta fase
+
+O que já está **correto** aqui — e que a Fase 3 vai desfazer de propósito para
+virar laboratório, e a Fase 5 vai consertar:
+
+- o auto-cadastro sempre cria `User`; o corpo da requisição não escolhe o papel
+  (enviar `role: "Admin"` no cadastro é ignorado);
+- `PUT /api/users/{id}` não aceita `role` nem senha, então ninguém se promove
+  por ali;
+- login responde sempre a mesma mensagem, e o hash é conferido mesmo quando o
+  usuário não existe, para não vazar existência de conta pelo tempo de resposta;
+- `GET /api/users/{id}` exige ser o dono ou Admin;
+- o token é validado por assinatura — editar o payload (por exemplo trocar
+  `User` por `Admin`) devolve 401;
+- `POST /api/auth/login` tem rate limit de 10 tentativas por minuto por IP,
+  devolvendo 429;
+- `UserDto` nunca expõe `PasswordHash`; erros voltam como ProblemDetails sem
+  stack trace nem SQL.
 
 ## Integração com o frontend
 
@@ -93,4 +151,6 @@ VITE_USE_SAMPLE_DATA=false
 ```
 
 Os Ids e as datas do seed acompanham `frontend/src/data/sampleUsers.js`, então
-a troca não quebra as telas.
+a troca não quebra as telas. O `Login.jsx` ainda usa `sampleApi.findByUsername`
+local: a integração com `POST /api/auth/login` e o armazenamento do token
+(`frontend/src/session.js`) é o próximo passo da Sprint 4.

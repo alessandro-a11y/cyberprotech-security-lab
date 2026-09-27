@@ -79,17 +79,19 @@ cyberprotech-security-lab/
 └── README.md
 ```
 
-O que realmente existe na Fase 1: arquitetura em quatro camadas do backend com
-`UsersController` (listagem e busca), `User`, `AppDbContext`, migration inicial,
-seed dos usuários de exemplo, health check de liveness e readiness, tratamento
-global de erros e CORS; frontend com 5 telas placeholder + cliente da API;
-toolkit com CLI e módulos em esqueleto; Compose com `db`, `backend`, `frontend`
-e `toolkit` (sob demanda).
+O que existe no backend até a Fase 2: arquitetura em quatro camadas,
+`User`, `AppDbContext` com migration inicial, seed dos usuários de exemplo,
+health check de liveness e readiness, tratamento global de erros, CORS,
+autenticação com BCrypt + JWT, papéis `Admin`/`User` com policies de
+autorização e rate limit no login. O frontend segue com 5 telas usando dados de
+exemplo; o toolkit, com CLI e módulos em esqueleto; o Compose, com `db`,
+`backend`, `frontend` e `toolkit` (sob demanda).
 
 ## 8. Funcionalidades planejadas
 
-- Login e gestão de usuários (Fase 2).
-- Dashboard com status da API/banco e últimos relatórios do toolkit (Fase 2/4).
+- Login e gestão de usuários — **API pronta na Fase 2**; falta ligar o frontend
+  a `POST /api/auth/login` (Sprint 4).
+- Dashboard com status da API/banco e últimos relatórios do toolkit (Fase 4).
 - Laboratório com cenários vulneráveis alternáveis vulnerável/corrigido (Fases 3 e 6).
 - Tela de resultados do Security Toolkit (Fase 4).
 - Suite de testes automatizados (Fase 5).

@@ -10,14 +10,68 @@ GET {{Api_HostAddress}}/api/health/ready HTTP/1.1
 
 ###
 
-# Todos os usuários.
+# --- Autenticação ---------------------------------------------------
+# Senha dos usuários de exemplo do seed: CyberProtech@2026
+
+POST {{Api_HostAddress}}/api/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "CyberProtech@2026"
+}
+
+###
+
+# Cadastro. O papel é sempre "User" - enviar "role" no corpo não tem efeito.
+POST {{Api_HostAddress}}/api/auth/register HTTP/1.1
+Content-Type: application/json
+
+{
+  "username": "novo.usuario",
+  "email": "novo.usuario@cyberprotech.lab",
+  "password": "SenhaForte@123",
+  "bio": "OPCIONAL"
+}
+
+###
+
+# Usuário do token informado. Substitua pelo token do login acima.
+GET {{Api_HostAddress}}/api/auth/me HTTP/1.1
+Authorization: Bearer {{token}}
+
+###
+
+# --- Usuários (exigem autenticação) ---------------------------------
+
 GET {{Api_HostAddress}}/api/users HTTP/1.1
+Authorization: Bearer {{token}}
 
 ###
 
-# Busca por usuário ou e-mail (termos com % e _ são escapados).
+# Filtra por usuário ou e-mail (termos com % e _ são escapados).
 GET {{Api_HostAddress}}/api/users?search=admin HTTP/1.1
+Authorization: Bearer {{token}}
 
 ###
 
+# Admin lê qualquer usuário; usuário comum só o próprio (403 nos demais).
 GET {{Api_HostAddress}}/api/users/3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e02 HTTP/1.1
+Authorization: Bearer {{token}}
+
+###
+
+# Exclusivo de Admin. Não aceita "role" nem senha.
+PUT {{Api_HostAddress}}/api/users/3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e02 HTTP/1.1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "bio": "Bio atualizada."
+}
+
+###
+
+# Exclusivo de Admin.
+DELETE {{Api_HostAddress}}/api/users/3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e02 HTTP/1.1
+Authorization: Bearer {{token}}

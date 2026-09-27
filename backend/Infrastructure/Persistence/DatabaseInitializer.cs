@@ -1,3 +1,4 @@
+using Application.Interfaces;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -13,10 +14,11 @@ namespace Infrastructure.Persistence;
 public static class DatabaseInitializer
 {
     /// <summary>
-    /// Valor usado no seed até a Fase 2 conectar o hasher de senha de verdade.
-    /// Não é um hash válido: o login só passa a funcionar na Fase 2.
+    /// Hash sem uso deixado pela Fase 1, antes de existir o hasher de senha.
+    /// Usuários ainda com esse valor não conseguem fazer login, então o seed os
+    /// reescreve com um hash de verdade.
     /// </summary>
-    private const string PendingPasswordHash = "!pending:fase-2";
+    private const string LegacyPlaceholderHash = "!pending:fase-2";
 
     public static async Task InitializeDatabaseAsync(
         this IServiceProvider services,
@@ -29,93 +31,116 @@ public static class DatabaseInitializer
         }
 
         await using var scope = services.CreateAsyncScope();
-        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DatabaseInitializer).FullName!);
+        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+            .CreateLogger(typeof(DatabaseInitializer).FullName!);
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
 
         await dbContext.Database.MigrateAsync(cancellationToken);
         logger.LogInformation("Banco migrado com sucesso.");
 
         if (configuration.GetValue("Database:Seed", true))
         {
-            await SeedAsync(dbContext, logger, cancellationToken);
+            var seedPassword = configuration.GetValue("Seed:Password", DefaultSeedPassword) ?? DefaultSeedPassword;
+
+            await SeedAsync(dbContext, passwordHasher, seedPassword, logger, cancellationToken);
         }
     }
 
-    private static async Task SeedAsync(AppDbContext dbContext, ILogger logger, CancellationToken cancellationToken)
+    private const string DefaultSeedPassword = "CyberProtech@2026";
+
+    private static async Task SeedAsync(
+        AppDbContext dbContext,
+        IPasswordHasher passwordHasher,
+        string seedPassword,
+        ILogger logger,
+        CancellationToken cancellationToken)
     {
-        // users é pequena; AnyAsync evita materialize a tabela inteira.
-        if (await dbContext.Users.AnyAsync(cancellationToken))
+        // users é pequena; AnyAsync evita materializar a tabela inteira.
+        if (!await dbContext.Users.AnyAsync(cancellationToken))
+        {
+            await CreateLabUsersAsync(dbContext, passwordHasher, seedPassword, logger, cancellationToken);
+            return;
+        }
+
+        await RepairLegacyHashesAsync(dbContext, passwordHasher, seedPassword, logger, cancellationToken);
+    }
+
+    private static async Task RepairLegacyHashesAsync(
+        AppDbContext dbContext,
+        IPasswordHasher passwordHasher,
+        string seedPassword,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        var legacy = await dbContext.Users
+            .Where(u => u.PasswordHash == LegacyPlaceholderHash)
+            .ToListAsync(cancellationToken);
+
+        if (legacy.Count == 0)
         {
             logger.LogInformation("Seed ignorado: a tabela users já possui dados.");
             return;
         }
 
+        var hash = passwordHasher.Hash(seedPassword);
+
+        foreach (var user in legacy)
+        {
+            user.PasswordHash = hash;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        logger.LogInformation(
+            "Hash de senha placeholder substituído em {Count} usuário(s) do seed.",
+            legacy.Count);
+    }
+
+    private static async Task CreateLabUsersAsync(
+        AppDbContext dbContext,
+        IPasswordHasher passwordHasher,
+        string seedPassword,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
         // Os Ids e as datas acompanham os dados de exemplo do frontend
         // (frontend/src/data/sampleUsers.js), para a demonstração ficar coerente
         // mesmo com VITE_USE_SAMPLE_DATA=false.
         dbContext.Users.AddRange(
-            new User
-            {
-                Id = Guid.Parse("3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e01"),
-                Username = "admin",
-                Email = "admin@cyberprotech.lab",
-                Role = "Admin",
-                Bio = "Conta administrativa do laboratório.",
-                PasswordHash = PendingPasswordHash,
-                CreatedAt = new DateTime(2026, 9, 1, 9, 0, 0, DateTimeKind.Utc),
-            },
-            new User
-            {
-                Id = Guid.Parse("3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e02"),
-                Username = "aluno01",
-                Email = "aluno01@cyberprotech.lab",
-                Role = "User",
-                Bio = "Estudante de segurança da informação.",
-                PasswordHash = PendingPasswordHash,
-                CreatedAt = new DateTime(2026, 9, 2, 14, 20, 0, DateTimeKind.Utc),
-            },
-            new User
-            {
-                Id = Guid.Parse("3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e03"),
-                Username = "maria.souza",
-                Email = "maria.souza@cyberprotech.lab",
-                Role = "User",
-                Bio = "Analista de suporte. Gosta de café e de logs bem escritos.",
-                PasswordHash = PendingPasswordHash,
-                CreatedAt = new DateTime(2026, 9, 3, 10, 5, 0, DateTimeKind.Utc),
-            },
-            new User
-            {
-                Id = Guid.Parse("3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e04"),
-                Username = "joao.lima",
-                Email = "joao.lima@cyberprotech.lab",
-                Role = "User",
-                Bio = "Desenvolvedor front-end em treinamento.",
-                PasswordHash = PendingPasswordHash,
-                CreatedAt = new DateTime(2026, 9, 5, 16, 40, 0, DateTimeKind.Utc),
-            },
-            new User
-            {
-                Id = Guid.Parse("3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e05"),
-                Username = "carla.admin",
-                Email = "carla@cyberprotech.lab",
-                Role = "Admin",
-                Bio = "Responsável pela gestão de acessos.",
-                PasswordHash = PendingPasswordHash,
-                CreatedAt = new DateTime(2026, 9, 8, 8, 30, 0, DateTimeKind.Utc),
-            },
-            new User
-            {
-                Id = Guid.Parse("3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e06"),
-                Username = "pedro.alves",
-                Email = "pedro.alves@cyberprotech.lab",
-                Role = "User",
-                Bio = null,
-                PasswordHash = PendingPasswordHash,
-                CreatedAt = new DateTime(2026, 9, 12, 11, 15, 0, DateTimeKind.Utc),
-            });
+            NewUser("3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e01", "admin", "admin@cyberprotech.lab", "Admin",
+                "Conta administrativa do laboratório.", new DateTime(2026, 9, 1, 9, 0, 0, DateTimeKind.Utc), passwordHasher, seedPassword),
+            NewUser("3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e02", "aluno01", "aluno01@cyberprotech.lab", "User",
+                "Estudante de segurança da informação.", new DateTime(2026, 9, 2, 14, 20, 0, DateTimeKind.Utc), passwordHasher, seedPassword),
+            NewUser("3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e03", "maria.souza", "maria.souza@cyberprotech.lab", "User",
+                "Analista de suporte. Gosta de café e de logs bem escritos.", new DateTime(2026, 9, 3, 10, 5, 0, DateTimeKind.Utc), passwordHasher, seedPassword),
+            NewUser("3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e04", "joao.lima", "joao.lima@cyberprotech.lab", "User",
+                "Desenvolvedor front-end em treinamento.", new DateTime(2026, 9, 5, 16, 40, 0, DateTimeKind.Utc), passwordHasher, seedPassword),
+            NewUser("3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e05", "carla.admin", "carla@cyberprotech.lab", "Admin",
+                "Responsável pela gestão de acessos.", new DateTime(2026, 9, 8, 8, 30, 0, DateTimeKind.Utc), passwordHasher, seedPassword),
+            NewUser("3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e06", "pedro.alves", "pedro.alves@cyberprotech.lab", "User",
+                null, new DateTime(2026, 9, 12, 11, 15, 0, DateTimeKind.Utc), passwordHasher, seedPassword));
 
         await dbContext.SaveChangesAsync(cancellationToken);
         logger.LogInformation("Seed aplicado: 6 usuários de exemplo criados.");
     }
+
+    private static User NewUser(
+        string id,
+        string username,
+        string email,
+        string role,
+        string? bio,
+        DateTime createdAt,
+        IPasswordHasher passwordHasher,
+        string seedPassword) =>
+        new()
+        {
+            Id = Guid.Parse(id),
+            Username = username,
+            Email = email,
+            Role = role,
+            Bio = bio,
+            PasswordHash = passwordHasher.Hash(seedPassword),
+            CreatedAt = createdAt,
+        };
 }

@@ -33,6 +33,11 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-cyberprotech_lab};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-changeme}
       Frontend__BaseUrl: ${FRONTEND_URL:-http://localhost:5173}
+      # Chave de assinatura do JWT. Fora do laboratório, gere uma nova por ambiente:
+      #   openssl rand -base64 48
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-dev-only-signing-key-troque-em-producao-0001}
+      # Senha dos usuários de exemplo do seed.
+      Seed__Password: ${SEED_PASSWORD:-CyberProtech@2026}
     ports:
       - "${BACKEND_PORT:-5000}:8080"
     healthcheck:
