@@ -99,10 +99,54 @@ então nenhum desses comandos precisa de conexão válida para *gerar* código.
 | DELETE | `/api/users/{id}`           | Admin      | Remove                             |
 | GET    | `/api/admin/stats`          | Admin      | Contagens do portal                |
 | PUT    | `/api/admin/users/{id}/role`| Admin      | Promove ou rebaixa                |
+| GET    | `/api/lab/config`           | logado     | Estado dos controles do laboratório|
+| PUT    | `/api/lab/config`           | Admin      | Altera os controles enviados      |
 | GET    | `/api/health`               | público    | Liveness (não toca no banco)       |
 | GET    | `/api/health/ready`         | público    | Readiness (503 se o banco falhar)  |
 
 O token vai no header: `Authorization: Bearer <token>`.
+
+### Controles do laboratório
+
+`GET /api/lab/config` existe para a tela de Administração mostrar a posição
+**real** dos toggles em vez de valores fixos no código do frontend. Os `id`
+(`vuln-mode`, `verbose-errors`, `rate-limit`, `sec-headers`) são os mesmos que
+`frontend/src/pages/Admin.jsx` já usa, para o frontend não precisar traduzir.
+
+```jsonc
+{
+  "labEnabled": true,
+  "writable": true,
+  "toggles": [
+    { "id": "vuln-mode",      "label": "Modo vulnerável",              "hint": "...", "on": false },
+    { "id": "verbose-errors", "label": "Erros detalhados",            "hint": "...", "on": false },
+    { "id": "rate-limit",     "label": "Limite de tentativas de login","hint": "...", "on": true  },
+    { "id": "sec-headers",    "label": "Headers de segurança",         "hint": "...", "on": true  }
+  ]
+}
+```
+
+`PUT` aceita os quatro campos como opcionais e só muda os enviados, que é como
+o toggle do frontend envia (um por vez):
+
+```json
+{ "vulnMode": true }
+```
+
+**Dupla trava.** Gravar exige `Lab:Enabled=true` **e** ambiente
+`Development`. Sem os dois, a resposta é `409` e o estado não muda. O padrão em
+`appsettings.json` é `Lab:Enabled=false`, então um deploy sem configuração não
+exposta o modo vulnerável por acidente. O `docker-compose.yml` liga o
+laboratório via `LAB_ENABLED` porque roda em Development.
+
+O estado é **em memória**: reiniciar a API devolve tudo ao padrão configurado,
+que é o estado seguro. Persistir faria um deploy esquecido deixar o modo
+vulnerável ligado. Ligar o modo vulnerável escreve um `LogWarning` alto.
+
+> Nesta sprint os quatro controles existem e são legíveis/graváveis, mas
+> **nada ancora atrás deles ainda** — a API está inteira no estado corrigido.
+> Quem ancora os cenários é a Sprint 5. É por isso que `vuln-mode: true` não
+> abre nada: o estado reportado é o estado real.
 
 ### Paginação e filtros de `GET /api/users`
 

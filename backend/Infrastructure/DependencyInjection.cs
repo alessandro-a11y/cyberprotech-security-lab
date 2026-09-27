@@ -1,4 +1,5 @@
 using Application.Interfaces;
+using Infrastructure.Lab;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
 using Infrastructure.Security;
@@ -37,6 +38,10 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddSingleton<ITokenService, JwtTokenService>();
+
+        // Estado do laboratório: mutável em memória, reinicia no estado seguro.
+        services.Configure<LabOptions>(configuration.GetSection(LabOptions.SectionName));
+        services.AddSingleton<LabState>();
 
         return services;
     }
