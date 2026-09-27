@@ -1,14 +1,14 @@
 using Application.Interfaces;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Infrastructure.Security;
+using Microsoft.EntityFrameworkCore;using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure;
 
 /// <summary>
-/// Registro dos serviços de infraestrutura (DbContext + repositórios).
+/// Registro dos serviços de infraestrutura (DbContext, repositórios e segurança).
 /// A connection string pode vir do appsettings ou da variável de ambiente
 /// "ConnectionStrings__DefaultConnection" (usada pelo Docker Compose).
 /// </summary>
@@ -21,6 +21,22 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
         services.AddScoped<IUserRepository, EfUserRepository>();
+
+        services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
+
+        // JwtTokenService resolve IOptions<JwtSettings>; sem este binding ele
+        // receberia uma instância vazia, com SigningString em branco.
+        services.AddOptions<JwtSettings>()
+            .Bind(configuration.GetSection(JwtSettings.SectionName))
+            .Validate(
+                settings => !string.IsNullOrWhiteSpace(settings.SigningKey),
+                "Jwt:SigningKey é obrigatória.")
+            .Validate(
+                settings => settings.SigningKey.Length >= 32,
+                "Jwt:SigningKey precisa ter ao menos 32 caracteres.")
+            .ValidateOnStart();
+
+        services.AddSingleton<ITokenService, JwtTokenService>();
 
         return services;
     }
