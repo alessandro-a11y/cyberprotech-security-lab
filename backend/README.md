@@ -177,9 +177,29 @@ Valores fora dos limites devolvem `400`, com mensagem dizendo qual foi o limite.
 | `Jwt:SigningKey`          | `Jwt__SigningKey`           | Mínimo 32 caracteres; a API não sobe com chave curta ou vazia |
 | `Seed:Password`           | `Seed__Password`            | Senha dos usuários de exemplo      |
 | `ConnectionStrings:DefaultConnection` | `ConnectionStrings__DefaultConnection` | Banco |
+| `Frontend:BaseUrl`      | `Frontend__BaseUrl`       | Origem do CORS; aceita `;` ou `,` para várias |
 
 A chave e a senha do `.env.example` são de laboratório. Gere uma chave por
 ambiente com `openssl rand -base64 48`.
+
+### CORS
+
+A policy `Frontend` é restritiva de propósito — "CORS aberto" é o cenário
+`misconfig` do laboratório, então a versão corrigida precisa ser o oposto do
+alvo:
+
+- **Origens:** as declaradas em `Frontend:BaseUrl`, mais
+  `http://localhost:5173` e `http://127.0.0.1:5173` em desenvolvimento. O
+  navegador trata os dois como origens distintas, então abrir a interface por
+  qualquer um dos dois não quebraria o CORS.
+- **Métodos:** `GET`, `POST`, `PUT`, `DELETE`. `AllowAnyMethod` liberaria verbos
+  que nem existem na API.
+- **Headers:** `Authorization`, `Content-Type`, `Accept`.
+- **Sem** `AllowAnyOrigin` e **sem** `AllowCredentials` — a API usa
+  `Authorization: Bearer`, então habilitar credencial só abriria espaço para
+  CSRF sem ganho nenhum.
+
+As definições ficam em `API/Infrastructure/CorsSetup.cs`.
 
 ## Decisões de segurança desta fase
 

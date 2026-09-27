@@ -69,7 +69,7 @@ cyberprotech-security-lab/
 ├── backend/            # API / Application / Domain / Infrastructure (ver backend/README.md)
 ├── frontend/           # React + Vite (Dockerfile + nginx.conf)
 ├── toolkit/            # Security Toolkit (Python)
-├── docs/               # architecture.md, lab-guide.md, toolkit.md
+├── docs/               # architecture.md, integration.md, lab-guide.md, toolkit.md
 ├── docker/             # backend.Dockerfile, toolkit.Dockerfile
 ├── tests/              # reservado à Fase 5 (ver tests/README.md)
 ├── .github/workflows/  # ci.yml
@@ -79,21 +79,30 @@ cyberprotech-security-lab/
 └── README.md
 ```
 
-O que existe no backend até a Fase 3: arquitetura em quatro camadas,
+O que existe no backend até a Fase 4: arquitetura em quatro camadas,
 `User`, `AppDbContext` com migration inicial, seed dos usuários de exemplo,
-health check de liveness e readiness, tratamento global de erros, CORS,
-autenticação com BCrypt + JWT, papéis `Admin`/`User` com policies de
-autorização, rate limit no login, perfil do usuário (editar e-mail/bio e trocar
-senha) e a área administrativa (`/api/admin/stats` e troca de papel). O frontend
-segue com 5 telas usando dados de exemplo; o toolkit, com CLI e módulos em
-esqueleto; o Compose, com `db`, `backend`, `frontend` e `toolkit` (sob demanda).
+health check de liveness e readiness, tratamento global de erros, CORS
+restritivo, autenticação com BCrypt + JWT, papéis `Admin`/`User` com policies
+de autorização, rate limit no login, perfil do usuário (editar e-mail/bio e
+trocar senha), área administrativa (`/api/admin/stats` e troca de papel) e o
+contrato dos controles do laboratório (`/api/lab/config`).
+
+O **contrato de integração** que o frontend consome está em
+[`docs/integration.md`](docs/integration.md) — fluxo, onde guardar o token,
+estados de erro e ordem sugerida de integração.
+
+O frontend segue com 5 telas usando dados de exemplo; o toolkit, com CLI e
+módulos em esqueleto; o Compose, com `db`, `backend`, `frontend` e `toolkit`
+(sob demanda).
 
 ## 8. Funcionalidades planejadas
 
-- Login e gestão de usuários — **API pronta na Fase 2**; falta ligar o frontend
-  a `POST /api/auth/login` (Sprint 4).
+- Ligar o frontend à API — **contrato pronto** em `docs/integration.md`; falta o
+  Alfredo executar a ordem sugerida lá no fim.
 - Dashboard com status da API/banco e últimos relatórios do toolkit (Fase 4).
-- Laboratório com cenários vulneráveis alternáveis vulnerável/corrigido (Fases 3 e 6).
+- Laboratório com cenários vulneráveis alternáveis vulnerável/corrigido — os
+  controles de runtime já existem (`/api/lab/config`); falta ancorar os
+  cenários atrás deles (Sprint 5).
 - Tela de resultados do Security Toolkit (Fase 4).
 - Suite de testes automatizados (Fase 5).
 

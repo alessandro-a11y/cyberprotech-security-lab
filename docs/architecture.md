@@ -30,18 +30,20 @@
 ## Camadas do backend
 
 ```text
-backend/API            -> Controllers, Endpoints (health), Handlers (erros, policies), Program.cs, Swagger
+backend/API            -> Controllers, Endpoints (health), Handlers (erros, policies, CORS), Program.cs, Swagger
 backend/Application    -> DTOs + Interfaces (contratos, sem dependência de infra)
 backend/Domain         -> Entidades (ex.: User)
 backend/Infrastructure -> EF Core + PostgreSQL (AppDbContext, Migrations, repositórios, seed)
                          + Security (BCrypt, JWT)
+                         + Lab (LabState, controles do laboratório)
 ```
 
 Dependências apontam para dentro: `API -> Application, Infrastructure`;
 `Infrastructure -> Application, Domain`. `Domain` não depende de ninguém.
 
 Detalhes de setup, comandos de migration e a tabela de endpoints estão em
-`backend/README.md`.
+`backend/README.md`. O contrato que o frontend consome está em
+`docs/integration.md`.
 
 ## Banco de dados
 
@@ -145,7 +147,7 @@ O Compose usa `/api/health` no `healthcheck` do container, e o frontend consome
 | `Jwt:Issuer` / `Jwt:Audience`     | `cyberprotech-api` / `cyberprotech-web` | validação do token        |
 | `Jwt:SigningKey`                  | chave de laboratório   | assinatura HS256; mínimo 32 caracteres  |
 | `Jwt:ExpirationMinutes`           | `60`                   | validade do token                       |
-| `Frontend:BaseUrl`                | `http://localhost:5173` | origem liberada no CORS               |
+| `Frontend:BaseUrl`                | `http://localhost:5173` | origem do CORS; aceita `;` ou `,` |
 
 ## Controles do laboratório
 
