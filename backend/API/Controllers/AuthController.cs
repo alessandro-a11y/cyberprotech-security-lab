@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Application.DTOs;
 using Application.Interfaces;
+using Infrastructure.Lab;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -25,7 +26,8 @@ namespace API.Controllers;
 public sealed class AuthController(
     IUserRepository users,
     IPasswordHasher passwordHasher,
-    ITokenService tokenService) : ControllerBase
+    ITokenService tokenService,
+    BioSanitizer bioSanitizer) : ControllerBase
 {
     private const string InvalidCredentialsMessage = "Usuário ou senha inválidos.";
 
@@ -104,6 +106,7 @@ public sealed class AuthController(
         return Ok(new AuthResponse(token, expiresAt, UserDto.FromEntity(user)));
     }
 
+
     /// <summary>
     /// Devolve o usuário do token informado. Serve ao frontend para restaurar a
     /// sessão depois de um recarregamento de página.
@@ -166,7 +169,7 @@ public sealed class AuthController(
         }
 
         user.Email = request.Email;
-        user.Bio = request.Bio;
+        user.Bio = bioSanitizer.Sanitize(request.Bio);
 
         await users.SaveChangesAsync(cancellationToken);
 

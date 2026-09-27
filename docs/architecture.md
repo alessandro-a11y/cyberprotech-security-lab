@@ -166,14 +166,22 @@ frontend não precisar traduzir.
 
 | Controle          | Ancorado em (Sprint 5)                        |
 |-------------------|----------------------------------------------|
-| `vuln-mode`       | SQLi em `SearchAsync`, IDOR em `GetById`, XSS no bio |
+| `vuln-mode`       | SQLi em `SearchAsync`, IDOR em `GetById`, bio sem `BioSanitizer` |
 | `verbose-errors`  | `GlobalExceptionHandler`                      |
-| `rate-limit`      | policy `login` do rate limiter               |
-| `sec-headers`     | middleware de headers de segurança           |
+| `rate-limit`      | factory da policy `login`                     |
+| `sec-headers`     | `SecurityHeadersMiddleware`                   |
 
-Hoje os quatro existem como contrato, mas nada ancora atrás deles: a API segue
-inteira no estado corrigido. É por isso que `vuln-mode: true` não abre nada
-ainda — o estado reportado é o estado real.
+Os quatro estão ancorados. Detalhes de exploração, payloads e a matriz de
+verificação estão em `docs/lab-guide.md`.
+
+Duas peculiaridades de implementação que valem registro:
+
+- **O estado entra na chave de partição do rate limiter.** `RateLimitPartition`
+  memoiza o limitador por chave, então a factory só roda na primeira
+  requisição. Sem o prefixo, virar o toggle não re-avaliava nada.
+- **O sanitizador de bio é segunda camada, não correção.** Escapar na
+  renderização continua sendo responsabilidade do frontend. Ver
+  `docs/lab-guide.md`.
 
 
 

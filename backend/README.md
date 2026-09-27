@@ -143,10 +143,9 @@ O estado é **em memória**: reiniciar a API devolve tudo ao padrão configurado
 que é o estado seguro. Persistir faria um deploy esquecido deixar o modo
 vulnerável ligado. Ligar o modo vulnerável escreve um `LogWarning` alto.
 
-> Nesta sprint os quatro controles existem e são legíveis/graváveis, mas
-> **nada ancora atrás deles ainda** — a API está inteira no estado corrigido.
-> Quem ancora os cenários é a Sprint 5. É por isso que `vuln-mode: true` não
-> abre nada: o estado reportado é o estado real.
+> Os quatro controles estão ancorados em cenários reais de vulnerabilidade,
+> nos dois estados. Exploração, payloads e matriz de verificação em
+> [`../docs/lab-guide.md`](../docs/lab-guide.md).
 
 ### Paginação e filtros de `GET /api/users`
 

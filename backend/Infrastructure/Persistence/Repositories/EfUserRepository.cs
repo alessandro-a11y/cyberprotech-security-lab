@@ -1,5 +1,6 @@
 using Application.Interfaces;
 using Domain.Entities;
+using Infrastructure.Lab;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence.Repositories;
@@ -7,7 +8,7 @@ namespace Infrastructure.Persistence.Repositories;
 /// <summary>
 /// Implementação EF Core do repositório de usuários.
 /// </summary>
-public sealed class EfUserRepository(AppDbContext dbContext) : IUserRepository
+public sealed class EfUserRepository(AppDbContext dbContext, LabState labState) : IUserRepository
 {
     public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken cancellationToken = default) =>
         await dbContext.Users
@@ -55,10 +56,58 @@ public sealed class EfUserRepository(AppDbContext dbContext) : IUserRepository
         int take,
         CancellationToken cancellationToken = default)
     {
-        var query = dbContext.Users.AsNoTracking();
+        // ---------------------------------------------------------------
+        // CENÁRIO DE LABORATÓRIO: SQL INJECTION (OWASP A03:2021)
+        //
+        // Só com o controle "vuln-mode" ligado, o que exige Lab:Enabled=true
+        // E ambiente Development (dupla trava em LabState.Writable).
+        //
+        // O termo do usuário entra concatenado no SQL: search=' OR '1'='1
+        // devolve a tabela inteira, e um UNION SELECT lê outras tabelas.
+        //
+        // A versão corrigida é a linha `var query = ApplyFilters(...)` abaixo,
+        // onde o termo viaja como parâmetro e o banco nunca o interpreta.
+        //
+        // A supressão do EF1002 é intencional e fica explícita aqui: o aviso é
+        // a própria prova de que o código é vulnerável, então removê-lo às
+        // cegas esconderia justamente o que o laboratório quer mostrar.
+        // ---------------------------------------------------------------
+#pragma warning disable EF1002
+        if (labState.Get(LabToggleId.VulnMode) && !string.IsNullOrWhiteSpace(search))
+        {
+            var concatenated = search.Trim();
+            return await dbContext.Users
+                .FromSqlRaw(
+                    $"""
+                     SELECT * FROM users
+                     WHERE "Username" ILIKE '%{concatenated}%'
+                        OR "Email" ILIKE '%{concatenated}%'
+                     ORDER BY "Username"
+                     """)
+                .Skip(skip)
+                .Take(take)
+                .ToListAsync(cancellationToken);
+        }
+#pragma warning restore EF1002
 
+        var query = ApplyFilters(dbContext.Users.AsNoTracking(), search, role);
+
+        return await query
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Filtros na versão corrigida: tudo parametrizado pelo provider.
+    /// </summary>
+    private static IQueryable<User> ApplyFilters(IQueryable<User> query, string? search, string? role)
+    {
         if (!string.IsNullOrWhiteSpace(search))
         {
+            // O termo viaja como parâmetro (nunca concatenado no SQL), mas os
+            // curingas do LIKE precisam ser escapados para que a busca por
+            // "100%" não corresponda a qualquer coisa.
             var term = $"%{EscapeLikePattern(search.Trim())}%";
 
             query = query.Where(u =>
@@ -73,11 +122,7 @@ public sealed class EfUserRepository(AppDbContext dbContext) : IUserRepository
             query = query.Where(u => u.Role == normalizedRole);
         }
 
-        return await query
-            .OrderBy(u => u.Username)
-            .Skip(skip)
-            .Take(take)
-            .ToListAsync(cancellationToken);
+        return query;
     }
 
     public Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default) =>
