@@ -34,9 +34,17 @@ public sealed partial class BioSanitizer(LabState labState)
     /// </summary>
     public string Sanitize(string? bio)
     {
-        if (labState.Get(LabToggleId.VulnMode) || string.IsNullOrWhiteSpace(bio))
+        // No modo vulnerável o texto volta byte a byte: é o que dá munição ao
+        // cenário de XSS do frontend, e aparar espaços quebraria a fidelidade
+        // do payload.
+        if (labState.Get(LabToggleId.VulnMode))
         {
             return bio ?? string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(bio))
+        {
+            return string.Empty;
         }
 
         var cleaned = TagPattern().Replace(bio, string.Empty);

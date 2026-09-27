@@ -5,4 +5,8 @@
     <Project Path="backend/Domain/Domain.csproj" />
     <Project Path="backend/Infrastructure/Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/backend/CyberProtech.Tests.Integration/CyberProtech.Tests.Integration.csproj" />
+    <Project Path="tests/backend/CyberProtech.Tests.Unit/CyberProtech.Tests.Unit.csproj" />
+  </Folder>
 </Solution>

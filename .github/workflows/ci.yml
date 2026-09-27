@@ -8,14 +8,36 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+
+    # A suíte de integração sobe a API real (WebApplicationFactory) contra um
+    # PostgreSQL de verdade, porque o cenário de SQL Injection só faz sentido
+    # sobre o banco real. O serviço abaixo é descartável: a cada run o banco é
+    # recriado do zero.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cyberprotech_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: changeme
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cyberprotech_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_CONNECTION_STRING: >-
+        Host=localhost;Port=5432;Database=cyberprotech_test;Username=postgres;Password=changeme
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
       - run: dotnet build CyberProtech.slnx -c Release
-      - run: dotnet test CyberProtech.slnx --no-build -c Release
-        if: hashFiles('tests/**/*.csproj') != ''
       # Falha se o modelo EF mudou sem que uma migration fosse gerada.
       - name: migrations em sincronia com o modelo
         working-directory: backend
@@ -23,6 +45,15 @@ jobs:
           dotnet tool restore
           dotnet ef migrations has-pending-model-changes \
             --project Infrastructure --startup-project API
+      - name: testes
+        run: dotnet test CyberProtech.slnx --no-build -c Release --logger "trx;LogFileName=testes.trx"
+      - name: publica o relatorio de testes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-de-testes
+          path: "**/TestResults/*.trx"
+          if-no-files-found: ignore
 
   frontend:
     runs-on: ubuntu-latest

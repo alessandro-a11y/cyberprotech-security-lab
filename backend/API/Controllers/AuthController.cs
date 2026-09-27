@@ -45,11 +45,7 @@ public sealed class AuthController(
     {
         if (await users.ExistsByUsernameOrEmailAsync(request.Username, request.Email, cancellationToken))
         {
-            return Conflict(new ProblemDetails
-            {
-                Status = StatusCodes.Status409Conflict,
-                Title = "Usuário ou e-mail já cadastrado.",
-            });
+            return Conflict(Problema(StatusCodes.Status409Conflict, "Usuário ou e-mail já cadastrado."));
         }
 
         var user = new Domain.Entities.User
@@ -94,11 +90,7 @@ public sealed class AuthController(
 
         if (user is null || !passwordMatches)
         {
-            return Unauthorized(new ProblemDetails
-            {
-                Status = StatusCodes.Status401Unauthorized,
-                Title = InvalidCredentialsMessage,
-            });
+            return Unauthorized(Problema(StatusCodes.Status401Unauthorized, InvalidCredentialsMessage));
         }
 
         var (token, expiresAt) = tokenService.CreateToken(user);
@@ -155,11 +147,7 @@ public sealed class AuthController(
 
         if (await users.EmailInUseByOtherAsync(request.Email, id.Value, cancellationToken))
         {
-            return Conflict(new ProblemDetails
-            {
-                Status = StatusCodes.Status409Conflict,
-                Title = "E-mail já cadastrado.",
-            });
+            return Conflict(Problema(StatusCodes.Status409Conflict, "E-mail já cadastrado."));
         }
 
         var user = await users.GetByIdForUpdateAsync(id.Value, cancellationToken);
@@ -207,11 +195,7 @@ public sealed class AuthController(
         // Sem a senha atual, um token vazado já seria suficiente para tomar a conta.
         if (!passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
         {
-            return Unauthorized(new ProblemDetails
-            {
-                Status = StatusCodes.Status401Unauthorized,
-                Title = "Senha atual inválida.",
-            });
+            return Unauthorized(Problema(StatusCodes.Status401Unauthorized, "Senha atual inválida."));
         }
 
         user.PasswordHash = passwordHasher.Hash(request.NewPassword);
@@ -220,6 +204,23 @@ public sealed class AuthController(
 
         return NoContent();
     }
+
+    /// <summary>
+    /// Cria um ProblemDetails com o <c>traceId</c> da requisição, para o cliente
+    /// conseguir correlacionar a resposta com o log do servidor.
+    /// </summary>
+    /// <remarks>
+    /// O <c>GlobalExceptionHandler</c> faz o mesmo por conta própria. Sem
+    /// repetir aqui, um 401 devolvido direto pelo controller sairia sem
+    /// <c>traceId</c>, e o cliente não teria como casar a resposta com o log.
+    /// </remarks>
+    private ProblemDetails Problema(int status, string titulo) =>
+        new()
+        {
+            Status = status,
+            Title = titulo,
+            Extensions = { ["traceId"] = HttpContext.TraceIdentifier },
+        };
 
     private Guid? CurrentUserId() =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;

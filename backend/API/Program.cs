@@ -32,16 +32,13 @@ builder.Services
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // Autenticação e autorização.
+//
+// O tamanho da chave é validado nos bindings de opções de AddInfrastructure
+// (que roda antes daqui e já falha a subida, medindo em bytes: 32 é o mínimo
+// real). Não duplicamos a regra aqui — manter as duas em sincronia é o que
+// costuma deixar passar divergência.
 var jwt = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
           ?? throw new InvalidOperationException($"Seção \"{JwtSettings.SectionName}\" ausente na configuração.");
-
-if (jwt.SigningKey.Length < 32)
-{
-    // HMAC-SHA256 com chave curta é quebrável; melhor falhar na subida do que
-    // aceitar um token que qualquer um assina.
-    throw new InvalidOperationException(
-        "Jwt:SigningKey precisa ter ao menos 32 caracteres. Defina a variável de ambiente Jwt__SigningKey.");
-}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -140,3 +137,8 @@ app.MapHealthEndpoints();
 app.MapControllers();
 
 app.Run();
+
+// Os testes de integracao (tests/backend/CyberProtech.Tests.Integration) sobem a
+// API com WebApplicationFactory<Program>, que precisa enxergar este tipo. Com
+// top-level statements ele e interno por padrao.
+public partial class Program;
