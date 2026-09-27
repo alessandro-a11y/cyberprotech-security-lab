@@ -86,19 +86,78 @@ então nenhum desses comandos precisa de conexão válida para *gerar* código.
 
 ## Endpoints
 
-| Método | Rota                    | Acesso     | Descrição                          |
-|--------|-------------------------|------------|------------------------------------|
-| POST   | `/api/auth/register`    | público    | Cadastra e devolve token           |
-| POST   | `/api/auth/login`       | público    | Autentica e devolve token          |
-| GET    | `/api/auth/me`          | logado     | Usuário do token                   |
-| GET    | `/api/users`            | logado     | Lista / busca                      |
-| GET    | `/api/users/{id}`       | dono/Admin | Um usuário                         |
-| PUT    | `/api/users/{id}`       | Admin      | Atualiza a bio                     |
-| DELETE | `/api/users/{id}`       | Admin      | Remove                             |
-| GET    | `/api/health`           | público    | Liveness (não toca no banco)       |
-| GET    | `/api/health/ready`     | público    | Readiness (503 se o banco falhar)  |
+| Método | Rota                        | Acesso     | Descrição                          |
+|--------|-----------------------------|------------|------------------------------------|
+| POST   | `/api/auth/register`        | público    | Cadastra e devolve token           |
+| POST   | `/api/auth/login`           | público    | Autentica e devolve token          |
+| GET    | `/api/auth/me`              | logado     | Usuário do token                   |
+| PUT    | `/api/auth/me`              | logado     | Atualiza e-mail e bio próprios    |
+| POST   | `/api/auth/change-password` | logado     | Troca a senha exigindo a atual     |
+| GET    | `/api/users`                | logado     | Lista / busca, com paginação       |
+| GET    | `/api/users/{id}`           | dono/Admin | Um usuário                         |
+| PUT    | `/api/users/{id}`           | Admin      | Atualiza a bio                     |
+| DELETE | `/api/users/{id}`           | Admin      | Remove                             |
+| GET    | `/api/admin/stats`          | Admin      | Contagens do portal                |
+| PUT    | `/api/admin/users/{id}/role`| Admin      | Promove ou rebaixa                |
+| GET    | `/api/lab/config`           | logado     | Estado dos controles do laboratório|
+| PUT    | `/api/lab/config`           | Admin      | Altera os controles enviados      |
+| GET    | `/api/health`               | público    | Liveness (não toca no banco)       |
+| GET    | `/api/health/ready`         | público    | Readiness (503 se o banco falhar)  |
 
 O token vai no header: `Authorization: Bearer <token>`.
+
+### Controles do laboratório
+
+`GET /api/lab/config` existe para a tela de Administração mostrar a posição
+**real** dos toggles em vez de valores fixos no código do frontend. Os `id`
+(`vuln-mode`, `verbose-errors`, `rate-limit`, `sec-headers`) são os mesmos que
+`frontend/src/pages/Admin.jsx` já usa, para o frontend não precisar traduzir.
+
+```jsonc
+{
+  "labEnabled": true,
+  "writable": true,
+  "toggles": [
+    { "id": "vuln-mode",      "label": "Modo vulnerável",              "hint": "...", "on": false },
+    { "id": "verbose-errors", "label": "Erros detalhados",            "hint": "...", "on": false },
+    { "id": "rate-limit",     "label": "Limite de tentativas de login","hint": "...", "on": true  },
+    { "id": "sec-headers",    "label": "Headers de segurança",         "hint": "...", "on": true  }
+  ]
+}
+```
+
+`PUT` aceita os quatro campos como opcionais e só muda os enviados, que é como
+o toggle do frontend envia (um por vez):
+
+```json
+{ "vulnMode": true }
+```
+
+**Dupla trava.** Gravar exige `Lab:Enabled=true` **e** ambiente
+`Development`. Sem os dois, a resposta é `409` e o estado não muda. O padrão em
+`appsettings.json` é `Lab:Enabled=false`, então um deploy sem configuração não
+exposta o modo vulnerável por acidente. O `docker-compose.yml` liga o
+laboratório via `LAB_ENABLED` porque roda em Development.
+
+O estado é **em memória**: reiniciar a API devolve tudo ao padrão configurado,
+que é o estado seguro. Persistir faria um deploy esquecido deixar o modo
+vulnerável ligado. Ligar o modo vulnerável escreve um `LogWarning` alto.
+
+> Nesta sprint os quatro controles existem e são legíveis/graváveis, mas
+> **nada ancora atrás deles ainda** — a API está inteira no estado corrigido.
+> Quem ancora os cenários é a Sprint 5. É por isso que `vuln-mode: true` não
+> abre nada: o estado reportado é o estado real.
+
+### Paginação e filtros de `GET /api/users`
+
+| Parâmetro | Padrão | Limite  |
+|-----------|--------|---------|
+| `search`  | —      | 100 caracteres |
+| `role`    | —      | `Admin` ou `User`, exato e com caixa |
+| `page`    | `1`    | ≥ 1 |
+| `pageSize`| `50`   | 1 a 100 |
+
+Valores fora dos limites devolvem `400`, com mensagem dizendo qual foi o limite.
 
 ## Autenticação
 
@@ -118,9 +177,29 @@ O token vai no header: `Authorization: Bearer <token>`.
 | `Jwt:SigningKey`          | `Jwt__SigningKey`           | Mínimo 32 caracteres; a API não sobe com chave curta ou vazia |
 | `Seed:Password`           | `Seed__Password`            | Senha dos usuários de exemplo      |
 | `ConnectionStrings:DefaultConnection` | `ConnectionStrings__DefaultConnection` | Banco |
+| `Frontend:BaseUrl`      | `Frontend__BaseUrl`       | Origem do CORS; aceita `;` ou `,` para várias |
 
 A chave e a senha do `.env.example` são de laboratório. Gere uma chave por
 ambiente com `openssl rand -base64 48`.
+
+### CORS
+
+A policy `Frontend` é restritiva de propósito — "CORS aberto" é o cenário
+`misconfig` do laboratório, então a versão corrigida precisa ser o oposto do
+alvo:
+
+- **Origens:** as declaradas em `Frontend:BaseUrl`, mais
+  `http://localhost:5173` e `http://127.0.0.1:5173` em desenvolvimento. O
+  navegador trata os dois como origens distintas, então abrir a interface por
+  qualquer um dos dois não quebraria o CORS.
+- **Métodos:** `GET`, `POST`, `PUT`, `DELETE`. `AllowAnyMethod` liberaria verbos
+  que nem existem na API.
+- **Headers:** `Authorization`, `Content-Type`, `Accept`.
+- **Sem** `AllowAnyOrigin` e **sem** `AllowCredentials` — a API usa
+  `Authorization: Bearer`, então habilitar credencial só abriria espaço para
+  CSRF sem ganho nenhum.
+
+As definições ficam em `API/Infrastructure/CorsSetup.cs`.
 
 ## Decisões de segurança desta fase
 
@@ -140,6 +219,28 @@ virar laboratório, e a Fase 5 vai consertar:
   devolvendo 429;
 - `UserDto` nunca expõe `PasswordHash`; erros voltam como ProblemDetails sem
   stack trace nem SQL.
+
+### Known limitations
+
+Registradas de propósito, para a Fase 5 decidir o que fazer:
+
+- **Trocar a senha não invalida tokens emitidos.** O JWT é sem estado, então um
+  token anterior continua válido até expirar (`Jwt:ExpirationMinutes`, 60 min).
+  Revogar exigiria um `SecurityStamp` no usuário e uma consulta ao banco em
+  cada requisição autenticada — o que troca o JWT sem estado por stateful. A
+  alternativa mais barata é reduzir a validade e emitir token novo no login.
+- **O rate limit do login é por processo.** São 10 tentativas por minuto na
+  instância que atendeu a requisição. Com mais de uma réplica, o limite efetivo
+  é o número de réplicas vezes 10, e ele se perde no restart.
+- **As guardrails de "último Admin" são defesa em profundidade hoje
+  inalcançáveis.** A trava de auto-alteração dispara antes: para rebaixar o
+  último Admin seria preciso ser ele mesmo, o que já é barrado com `409`. Elas
+  continuam no código porque valem se a trava de auto-alteração um dia for
+  relaxada.
+- **Recuperação de lockout exige outro Admin.** Se o único Admin for removido
+  por manipulação direta no banco, não há caminho pela API para voltar. Um
+  cenário de *break-glass* (primeiro usuário a se promover quando não há
+  nenhum Admin) é decisão de produto, não de sprint.
 
 ## Integração com o frontend
 

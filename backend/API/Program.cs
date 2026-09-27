@@ -81,12 +81,19 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-// CORS restrito à URL do frontend do laboratório (configurável via "Frontend:BaseUrl").
-const string frontendPolicy = "Frontend";
-var frontendBaseUrl = builder.Configuration.GetValue<string>("Frontend:BaseUrl") ?? "http://localhost:5173";
+// CORS restrito às origens do frontend do laboratório (configurável via
+// "Frontend:BaseUrl"). Ver CorsSetup para o porquê de cada restrição.
+var allowedOrigins = CorsSetup.ResolveOrigins(
+    builder.Configuration.GetValue<string>("Frontend:BaseUrl"),
+    builder.Environment.IsDevelopment());
+
 builder.Services.AddCors(options =>
-    options.AddPolicy(frontendPolicy, policy =>
-        policy.WithOrigins(frontendBaseUrl).AllowAnyHeader().AllowAnyMethod()));
+    options.AddPolicy(
+        CorsSetup.PolicyName,
+        policy => policy
+            .WithOrigins(allowedOrigins)
+            .WithMethods(CorsSetup.AllowedMethods)
+            .WithHeaders(CorsSetup.AllowedHeaders)));
 
 var app = builder.Build();
 
@@ -102,7 +109,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors(frontendPolicy);
+app.UseCors(CorsSetup.PolicyName);
 
 app.UseAuthentication();
 app.UseAuthorization();

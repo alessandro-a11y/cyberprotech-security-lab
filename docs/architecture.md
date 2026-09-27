@@ -30,18 +30,20 @@
 ## Camadas do backend
 
 ```text
-backend/API            -> Controllers, Endpoints (health), Handlers (erros, policies), Program.cs, Swagger
+backend/API            -> Controllers, Endpoints (health), Handlers (erros, policies, CORS), Program.cs, Swagger
 backend/Application    -> DTOs + Interfaces (contratos, sem dependência de infra)
 backend/Domain         -> Entidades (ex.: User)
 backend/Infrastructure -> EF Core + PostgreSQL (AppDbContext, Migrations, repositórios, seed)
                          + Security (BCrypt, JWT)
+                         + Lab (LabState, controles do laboratório)
 ```
 
 Dependências apontam para dentro: `API -> Application, Infrastructure`;
 `Infrastructure -> Application, Domain`. `Domain` não depende de ninguém.
 
 Detalhes de setup, comandos de migration e a tabela de endpoints estão em
-`backend/README.md`.
+`backend/README.md`. O contrato que o frontend consome está em
+`docs/integration.md`.
 
 ## Banco de dados
 
@@ -62,9 +64,11 @@ Detalhes de setup, comandos de migration e a tabela de endpoints estão em
 ## Autenticação e autorização
 
 ```text
-POST /api/auth/register  -> cria User e devolve token
-POST /api/auth/login     -> confere BCrypt e devolve token
-GET  /api/auth/me        -> usuário do token
+POST /api/auth/register         -> cria User e devolve token
+POST /api/auth/login            -> confere BCrypt e devolve token
+GET  /api/auth/me               -> usuário do token
+PUT  /api/auth/me               -> e-mail e bio próprios
+POST /api/auth/change-password  -> exige a senha atual
 
 JwtTokenService  -> HS256; claims sub, nameidentifier, name, email, role
 IPasswordHasher  -> BCrypt custo 12, sal por senha
@@ -80,6 +84,23 @@ O middleware roda nesta ordem: `UseCors` -> `UseAuthentication` ->
 
 Além da policy, `GET /api/users/{id}` compara o `id` da rota com o
 `NameIdentifier` do token: Admin vê qualquer um, usuário comum só o próprio.
+
+`AdminController` aplica `AdminOnly` na classe inteira — não há
+`[AllowAnonymous]` em nenhum método, e é para lá que a Fase 3 vai olhar ao
+construir o cenário de Broken Access Control.
+
+### Travas de papel
+
+Toda alteração de papel passa por três checagens, nesta ordem:
+
+1. o papel precisa estar na allowlist `Admin`/`User` — valor arbitrário do
+   cliente criaria um papel que nenhuma policy reconhece (`400`);
+2. o Admin não altera o próprio papel (`409`);
+3. o último Admin não é rebaixado nem removido (`409`).
+
+A ordem importa: como a trava 2 vem antes da 3, a 3 é defesa em profundidade e
+hoje inalcançável pela API. Fica registrada em
+`Known limitations` do `backend/README.md`.
 
 Login tem rate limit de 10 tentativas por minuto por IP (janela fixa em memória,
 `429` ao estourar). É um freio para a demonstração, não um controle de
@@ -118,10 +139,42 @@ O Compose usa `/api/health` no `healthcheck` do container, e o frontend consome
 | `Database:MigrateOnStartup`       | `true`                 | aplica migrations ao subir              |
 | `Database:Seed`                   | `true`                 | popula usuários de exemplo se vazio    |
 | `Seed:Password`                   | `CyberProtech@2026`    | senha dos usuários de exemplo           |
+| `Lab:Enabled`                     | `false`                | interruptor mestre do laboratório       |
+| `Lab:VulnMode`                    | `false`                | estado inicial do modo vulnerável      |
+| `Lab:VerboseErrors`               | `false`                | estado inicial dos erros detalhados    |
+| `Lab:RateLimit`                   | `true`                 | estado inicial do limite de login      |
+| `Lab:SecurityHeaders`             | `true`                 | estado inicial dos headers              |
 | `Jwt:Issuer` / `Jwt:Audience`     | `cyberprotech-api` / `cyberprotech-web` | validação do token        |
 | `Jwt:SigningKey`                  | chave de laboratório   | assinatura HS256; mínimo 32 caracteres  |
 | `Jwt:ExpirationMinutes`           | `60`                   | validade do token                       |
-| `Frontend:BaseUrl`                | `http://localhost:5173` | origem liberada no CORS               |
+| `Frontend:BaseUrl`                | `http://localhost:5173` | origem do CORS; aceita `;` ou `,` |
+
+## Controles do laboratório
+
+```text
+GET /api/lab/config  -> estado dos 4 controles (logado)
+PUT /api/lab/config  -> altera os enviados (Admin)
+```
+
+`LabState` (singleton, em memória) é a única fonte do estado. Gravar exige
+`Lab:Enabled=true` **e** ambiente `Development`; sem os dois, `409`. O padrão
+`Lab:Enabled=false` em `appsettings.json` faz um deploy sem configuração ficar
+seguro por construção, não por disciplina.
+
+Os `id` dos controles são os que `frontend/src/pages/Admin.jsx` já usa, para o
+frontend não precisar traduzir.
+
+| Controle          | Ancorado em (Sprint 5)                        |
+|-------------------|----------------------------------------------|
+| `vuln-mode`       | SQLi em `SearchAsync`, IDOR em `GetById`, XSS no bio |
+| `verbose-errors`  | `GlobalExceptionHandler`                      |
+| `rate-limit`      | policy `login` do rate limiter               |
+| `sec-headers`     | middleware de headers de segurança           |
+
+Hoje os quatro existem como contrato, mas nada ancora atrás deles: a API segue
+inteira no estado corrigido. É por isso que `vuln-mode: true` não abre nada
+ainda — o estado reportado é o estado real.
+
 
 
 ## Portas (configuráveis via `.env`)

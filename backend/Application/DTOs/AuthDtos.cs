@@ -48,3 +48,9 @@ public sealed class LoginRequest
 /// Resposta de um login (ou cadastro) bem-sucedido.
 /// </summary>
 public sealed record AuthResponse(string Token, DateTime ExpiresAt, UserDto User);
+
+/// <summary>
+/// Resposta da atualização do próprio perfil: os dados atualizados e um token
+/// novo, já com o e-mail atualizado na claim.
+/// </summary>
+public sealed record ProfileUpdateResponse(UserDto User, string Token, DateTime ExpiresAt);

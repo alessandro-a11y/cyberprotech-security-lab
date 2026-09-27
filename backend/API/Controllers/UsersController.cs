@@ -25,18 +25,58 @@ namespace API.Controllers;
 [Authorize(Policy = AuthorizationPolicies.Authenticated)]
 public sealed class UsersController(IUserRepository users) : ControllerBase
 {
+    /// <summary>Teto de itens por página, para ninguém pedir a tabela inteira.</summary>
+    private const int MaxPageSize = 100;
+
+    private const int DefaultPageSize = 50;
+
     /// <summary>
-    /// Lista os usuários, opcionalmente filtrando por usuário ou e-mail.
+    /// Lista os usuários, com busca opcional, filtro de papel e paginação.
     /// </summary>
-    /// <param name="search">Termo de busca. Vazio ou ausente devolve todos.</param>
+    /// <param name="search">Termo em usuário ou e-mail.</param>
+    /// <param name="role">Filtra por papel exato ("Admin" ou "User").</param>
+    /// <param name="page">Página 1-based. Padrão 1.</param>
+    /// <param name="pageSize">Itens por página, de 1 a 100. Padrão 50.</param>
     /// <param name="cancellationToken">Token de cancelamento da requisição.</param>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<UserDto>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<UserDto>>> GetAll(
         [FromQuery] string? search,
-        CancellationToken cancellationToken)
+        [FromQuery] string? role,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = DefaultPageSize,
+        CancellationToken cancellationToken = default)
     {
-        var result = await users.SearchAsync(search, cancellationToken);
+        if (page < 1)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "page deve ser maior ou igual a 1.",
+            });
+        }
+
+        if (pageSize is < 1 or > MaxPageSize)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = $"pageSize deve estar entre 1 e {MaxPageSize}.",
+            });
+        }
+
+        if (search is { Length: > 100 })
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "search deve ter no máximo 100 caracteres.",
+            });
+        }
+
+        var skip = (page - 1) * pageSize;
+        var result = await users.SearchAsync(search, role, skip, pageSize, cancellationToken);
+
         return Ok(result.Select(UserDto.FromEntity).ToList());
     }
 
@@ -94,13 +134,35 @@ public sealed class UsersController(IUserRepository users) : ControllerBase
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
+        // Sem esta trava o administrador apaga a própria conta e o portal pode
+        // ficar sem nenhum Admin — ninguém consegue mais entrar para corrigir.
+        if (CurrentUserId() == id)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Um administrador não remove a própria conta.",
+            });
+        }
+
         var user = await users.GetByIdForUpdateAsync(id, cancellationToken);
         if (user is null)
         {
             return NotFound();
+        }
+
+        if (user.Role == AuthorizationPolicies.AdminRole
+            && await users.CountByRoleAsync(AuthorizationPolicies.AdminRole, cancellationToken) <= 1)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Não é possível remover o último administrador.",
+            });
         }
 
         await users.DeleteAsync(user, cancellationToken);
@@ -119,9 +181,13 @@ public sealed class UsersController(IUserRepository users) : ControllerBase
             return true;
         }
 
-        var ownId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Guid.TryParse(ownId, out var parsed) && parsed == id;
+        return CurrentId(principal) == id;
     }
+
+    private static Guid? CurrentId(ClaimsPrincipal principal) =>
+        Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+
+    private Guid? CurrentUserId() => CurrentId(User);
 }
 
 /// <summary>

@@ -38,6 +38,9 @@ services:
       Jwt__SigningKey: ${JWT_SIGNING_KEY:-dev-only-signing-key-troque-em-producao-0001}
       # Senha dos usuários de exemplo do seed.
       Seed__Password: ${SEED_PASSWORD:-CyberProtech@2026}
+      # Interruptor mestre do laboratório. "true" permite alternar os controles
+      # inseguros, mas a gravacao tambem exige ASPNETCORE_ENVIRONMENT=Development.
+      Lab__Enabled: ${LAB_ENABLED:-true}
     ports:
       - "${BACKEND_PORT:-5000}:8080"
     healthcheck:

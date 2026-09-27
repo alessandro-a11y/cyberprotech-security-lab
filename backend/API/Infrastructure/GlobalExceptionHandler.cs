@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace API.Infrastructure;
 
@@ -14,6 +15,9 @@ namespace API.Infrastructure;
 /// </remarks>
 public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
+    /// <summary>unique_violation do PostgreSQL.</summary>
+    private const string UniqueViolation = "23505";
+
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
@@ -25,13 +29,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             httpContext.Request.Method,
             httpContext.Request.Path);
 
-        var (statusCode, title) = exception switch
-        {
-            DbUpdateException => (StatusCodes.Status409Conflict, "Conflito ao gravar no banco."),
-            KeyNotFoundException => (StatusCodes.Status404NotFound, "Recurso não encontrado."),
-            UnauthorizedAccessException => (StatusCodes.Status403Forbidden, "Acesso negado."),
-            _ => (StatusCodes.Status500InternalServerError, "Erro interno."),
-        };
+        var (statusCode, title) = Classify(exception);
 
         // O detalhe técnico fica no log, não na resposta.
         var problemDetails = new ProblemDetails
@@ -49,4 +47,24 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
 
         return true;
     }
+
+    private static (int StatusCode, string Title) Classify(Exception exception) => exception switch
+    {
+        // Conflito de unicidade tem resposta própria e útil; qualquer outro erro
+        // de gravação continua sendo opaco, para não servir de oráculo do banco.
+        DbUpdateException { InnerException: PostgresException { SqlState: UniqueViolation } } =>
+            (StatusCodes.Status409Conflict, "Já existe um registro com este usuário ou e-mail."),
+
+        DbUpdateException =>
+            (StatusCodes.Status409Conflict, "Conflito ao gravar no banco."),
+
+        KeyNotFoundException =>
+            (StatusCodes.Status404NotFound, "Recurso não encontrado."),
+
+        UnauthorizedAccessException =>
+            (StatusCodes.Status403Forbidden, "Acesso negado."),
+
+        _ =>
+            (StatusCodes.Status500InternalServerError, "Erro interno."),
+    };
 }
