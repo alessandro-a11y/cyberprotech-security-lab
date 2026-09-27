@@ -42,6 +42,7 @@ public static class DependencyInjection
         // Estado do laboratório: mutável em memória, reinicia no estado seguro.
         services.Configure<LabOptions>(configuration.GetSection(LabOptions.SectionName));
         services.AddSingleton<LabState>();
+        services.AddSingleton<BioSanitizer>();
 
         return services;
     }

@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Application.DTOs;
 using Application.Interfaces;
 using API.Infrastructure;
+using Infrastructure.Lab;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,7 +24,7 @@ namespace API.Controllers;
 [Route("api/[controller]")]
 [Produces("application/json")]
 [Authorize(Policy = AuthorizationPolicies.Authenticated)]
-public sealed class UsersController(IUserRepository users) : ControllerBase
+public sealed class UsersController(IUserRepository users, LabState labState, BioSanitizer bioSanitizer) : ControllerBase
 {
     /// <summary>Teto de itens por página, para ninguém pedir a tabela inteira.</summary>
     private const int MaxPageSize = 100;
@@ -65,8 +66,13 @@ public sealed class UsersController(IUserRepository users) : ControllerBase
             });
         }
 
-        if (search is { Length: > 100 })
+        if (!labState.Get(LabToggleId.VulnMode) && search is { Length: > 100 })
         {
+            // O teto de 100 caracteres é um controle real da versão corrigida
+            // (entre outras coisas, encurta o alcance de payloads de injeção).
+            // No modo vulnerável o limite é ignorado de propósito, senão o
+            // cenário de SQL Injection não seria demonstrável: um UNION SELECT
+            // precisa de bem mais que 100 caracteres.
             return BadRequest(new ProblemDetails
             {
                 Status = StatusCodes.Status400BadRequest,
@@ -91,7 +97,19 @@ public sealed class UsersController(IUserRepository users) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<UserDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        if (!CanAccess(User, id))
+        // ---------------------------------------------------------------
+        // CENÁRIO DE LABORATÓRIO: IDOR / Broken Access Control (OWASP A01:2021)
+        //
+        // Só com o controle "vuln-mode" ligado (Lab:Enabled=true E ambiente
+        // Development) é que a checagem de dono é pulada. Aí qualquer usuário
+        // autenticado lê o perfil de qualquer outro, trocando o id na URL.
+        //
+        // A versão corrigida é o `if (!CanAccess(...)) return Forbid();` logo
+        // abaixo, que compara o id da rota com o NameIdentifier do token.
+        // ---------------------------------------------------------------
+        var vulnerableIdor = labState.Get(LabToggleId.VulnMode);
+
+        if (!vulnerableIdor && !CanAccess(User, id))
         {
             return Forbid();
         }
@@ -120,7 +138,7 @@ public sealed class UsersController(IUserRepository users) : ControllerBase
             return NotFound();
         }
 
-        user.Bio = request.Bio;
+        user.Bio = bioSanitizer.Sanitize(request.Bio);
 
         await users.SaveChangesAsync(cancellationToken);
 

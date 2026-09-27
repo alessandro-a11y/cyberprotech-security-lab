@@ -2,6 +2,7 @@ using System.Text;
 using API.Endpoints;
 using API.Infrastructure;
 using Infrastructure;
+using Infrastructure.Lab;
 using Infrastructure.Persistence;
 using Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -67,18 +68,37 @@ builder.Services.AddAuthorization(options =>
 });
 
 // Fração de janela fixa por IP: freia força bruta sem travar a demonstração.
+// Com o controle "rate-limit" desligado, a partição vira "sem limite" — é o
+// cenário de falhas de autenticação do laboratório.
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddPolicy("login", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+    {
+        var labState = httpContext.RequestServices.GetRequiredService<LabState>();
+        var enabled = labState.Get(LabToggleId.RateLimit);
+
+        // O estado do flag entra na chave de partição de propósito:
+        // RateLimitPartition memoiza o limitador por chave, então a factory só
+        // roda na primeira requisição daquela chave. Sem o prefixo, virar o
+        // toggle não re-avaliava nada e o limitador antigo continuava valendo.
+        var partitionKey =
+            (enabled ? "on:" : "off:") + (httpContext.Connection.RemoteIpAddress?.ToString() ?? "desconhecido");
+
+        if (!enabled)
+        {
+            return RateLimitPartition.GetNoLimiter(partitionKey);
+        }
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: partitionKey,
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
-            }));
+            });
+    });
 });
 
 // CORS restrito às origens do frontend do laboratório (configurável via
@@ -110,6 +130,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors(CorsSetup.PolicyName);
+app.UseMiddleware<SecurityHeadersMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
