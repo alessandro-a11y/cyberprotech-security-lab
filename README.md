@@ -71,7 +71,7 @@ cyberprotech-security-lab/
 ├── toolkit/            # Security Toolkit (Python)
 ├── docs/               # architecture.md, integration.md, lab-guide.md, toolkit.md
 ├── docker/             # backend.Dockerfile, toolkit.Dockerfile
-├── tests/              # reservado à Fase 5 (ver tests/README.md)
+├── tests/backend/      # xUnit: unidade + integração (ver tests/README.md)
 ├── .github/workflows/  # ci.yml
 ├── .env.example        # variáveis de exemplo (sem segredos)
 ├── .gitignore
@@ -104,7 +104,7 @@ módulos em esqueleto; o Compose, com `db`, `backend`, `frontend` e `toolkit`
   controles de runtime já existem (`/api/lab/config`); falta ancorar os
   cenários atrás deles (Sprint 5).
 - Tela de resultados do Security Toolkit (Fase 4).
-- Suite de testes automatizados (Fase 5).
+- Testes de frontend e do toolkit (`tests/README.md` lista o que falta).
 
 ## 9. Vulnerabilidades planejadas (somente a partir da Fase 3)
 
