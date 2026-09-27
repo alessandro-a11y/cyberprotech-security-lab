@@ -1,7 +1,23 @@
 @Api_HostAddress = http://localhost:5000
 
+# Liveness: sempre 200 enquanto o processo estiver no ar.
 GET {{Api_HostAddress}}/api/health HTTP/1.1
 
 ###
 
+# Readiness: 503 enquanto o PostgreSQL estiver inacessível.
+GET {{Api_HostAddress}}/api/health/ready HTTP/1.1
+
+###
+
+# Todos os usuários.
 GET {{Api_HostAddress}}/api/users HTTP/1.1
+
+###
+
+# Busca por usuário ou e-mail (termos com % e _ são escapados).
+GET {{Api_HostAddress}}/api/users?search=admin HTTP/1.1
+
+###
+
+GET {{Api_HostAddress}}/api/users/3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e02 HTTP/1.1

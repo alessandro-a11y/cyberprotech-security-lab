@@ -6,7 +6,7 @@ namespace Infrastructure.Persistence;
 
 /// <summary>
 /// Contexto do Entity Framework Core (PostgreSQL via Npgsql).
-/// Migrations serão criadas na Fase 2.
+/// As migrations ficam em Persistence/Migrations (geradas via `dotnet ef`).
 /// </summary>
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
@@ -24,6 +24,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(u => u.Email).IsRequired().HasMaxLength(256);
             entity.Property(u => u.PasswordHash).IsRequired();
             entity.Property(u => u.Role).IsRequired().HasMaxLength(32);
+            entity.Property(u => u.Bio).HasMaxLength(512);
             entity.HasIndex(u => u.Username).IsUnique();
             entity.HasIndex(u => u.Email).IsUnique();
         });

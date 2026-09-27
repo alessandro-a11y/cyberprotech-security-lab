@@ -16,6 +16,13 @@ jobs:
       - run: dotnet build CyberProtech.slnx -c Release
       - run: dotnet test CyberProtech.slnx --no-build -c Release
         if: hashFiles('tests/**/*.csproj') != ''
+      # Falha se o modelo EF mudou sem que uma migration fosse gerada.
+      - name: migrations em sincronia com o modelo
+        working-directory: backend
+        run: |
+          dotnet tool restore
+          dotnet ef migrations has-pending-model-changes \
+            --project Infrastructure --startup-project API
 
   frontend:
     runs-on: ubuntu-latest

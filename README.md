@@ -39,10 +39,12 @@ frontend (React + Vite, nginx) ──HTTP /api/*──> backend (ASP.NET Core 8)
 toolkit (Python, perfil sob demanda)          PostgreSQL (volume nomeado pgdata)
 ```
 
-- `backend/API` — Controllers, `Program.cs` (CORS, Swagger, DI).
+- `backend/API` — Controllers, endpoints de health, handler global de erros,
+  `Program.cs` (CORS, Swagger, DI).
 - `backend/Application` — DTOs e interfaces (contratos).
 - `backend/Domain` — entidades (ex.: `User`).
-- `backend/Infrastructure` — EF Core + PostgreSQL (`AppDbContext`, repositórios).
+- `backend/Infrastructure` — EF Core + PostgreSQL (`AppDbContext`, migrations,
+  repositórios, seed).
 - `frontend/src` — `pages/` (Login, Dashboard, Usuários, Laboratório, Toolkit),
   `api/client.js`, `components/Layout.jsx`.
 - `toolkit/src/toolkit` — `scanner`, `headers`, `cookies`, `endpoints`,
@@ -64,7 +66,7 @@ toolkit (Python, perfil sob demanda)          PostgreSQL (volume nomeado pgdata)
 
 ```text
 cyberprotech-security-lab/
-├── backend/            # API / Application / Domain / Infrastructure
+├── backend/            # API / Application / Domain / Infrastructure (ver backend/README.md)
 ├── frontend/           # React + Vite (Dockerfile + nginx.conf)
 ├── toolkit/            # Security Toolkit (Python)
 ├── docs/               # architecture.md, lab-guide.md, toolkit.md
@@ -77,10 +79,12 @@ cyberprotech-security-lab/
 └── README.md
 ```
 
-O que realmente existe na Fase 1: estrutura do backend com `HealthController`,
-`UsersController` (somente leitura), entidade `User`, `AppDbContext` e DI;
-frontend com 5 telas placeholder + cliente da API; toolkit com CLI e módulos
-em esqueleto; Compose com `db`, `backend`, `frontend` e `toolkit` (sob demanda).
+O que realmente existe na Fase 1: arquitetura em quatro camadas do backend com
+`UsersController` (listagem e busca), `User`, `AppDbContext`, migration inicial,
+seed dos usuários de exemplo, health check de liveness e readiness, tratamento
+global de erros e CORS; frontend com 5 telas placeholder + cliente da API;
+toolkit com CLI e módulos em esqueleto; Compose com `db`, `backend`, `frontend`
+e `toolkit` (sob demanda).
 
 ## 8. Funcionalidades planejadas
 

@@ -25,5 +25,10 @@ public sealed class User
     /// </summary>
     public string Role { get; set; } = "User";
 
+    /// <summary>
+    /// Texto de apresentação exibido no perfil. Opcional.
+    /// </summary>
+    public string? Bio { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
