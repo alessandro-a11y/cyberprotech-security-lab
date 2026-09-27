@@ -30,6 +30,17 @@ public interface IUserRepository
     Task<IReadOnlyList<User>> SearchAsync(string? search, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Busca com filtro de papel e paginação (<c>skip</c>/<c>take</c>).
+    /// <paramref name="role"/> nulo ou vazio não filtra.
+    /// </summary>
+    Task<IReadOnlyList<User>> SearchAsync(
+        string? search,
+        string? role,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Busca por usuário, ignorando maiúsculas/minúsculas. É o método usado
     /// pelo login — por isso compara sem traduzir para o banco.
     /// </summary>
@@ -42,6 +53,26 @@ public interface IUserRepository
         string username,
         string email,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Verdadeiro quando o e-mail já pertence a <paramref name="excludeUserId"/>
+    /// <em>ou a outro</em> usuário. O perfil usa isso para permitir reenviar o
+    /// próprio e-mail sem dar conflito.
+    /// </summary>
+    Task<bool> EmailInUseByOtherAsync(
+        string email,
+        Guid excludeUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Quantas contas têm exatamente o papel informado.
+    /// </summary>
+    Task<int> CountByRoleAsync(string role, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Total de contas cadastradas.
+    /// </summary>
+    Task<int> CountAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Inclui um novo usuário. Lança se violar a restrição de unicidade.

@@ -62,9 +62,11 @@ Detalhes de setup, comandos de migration e a tabela de endpoints estão em
 ## Autenticação e autorização
 
 ```text
-POST /api/auth/register  -> cria User e devolve token
-POST /api/auth/login     -> confere BCrypt e devolve token
-GET  /api/auth/me        -> usuário do token
+POST /api/auth/register         -> cria User e devolve token
+POST /api/auth/login            -> confere BCrypt e devolve token
+GET  /api/auth/me               -> usuário do token
+PUT  /api/auth/me               -> e-mail e bio próprios
+POST /api/auth/change-password  -> exige a senha atual
 
 JwtTokenService  -> HS256; claims sub, nameidentifier, name, email, role
 IPasswordHasher  -> BCrypt custo 12, sal por senha
@@ -80,6 +82,23 @@ O middleware roda nesta ordem: `UseCors` -> `UseAuthentication` ->
 
 Além da policy, `GET /api/users/{id}` compara o `id` da rota com o
 `NameIdentifier` do token: Admin vê qualquer um, usuário comum só o próprio.
+
+`AdminController` aplica `AdminOnly` na classe inteira — não há
+`[AllowAnonymous]` em nenhum método, e é para lá que a Fase 3 vai olhar ao
+construir o cenário de Broken Access Control.
+
+### Travas de papel
+
+Toda alteração de papel passa por três checagens, nesta ordem:
+
+1. o papel precisa estar na allowlist `Admin`/`User` — valor arbitrário do
+   cliente criaria um papel que nenhuma policy reconhece (`400`);
+2. o Admin não altera o próprio papel (`409`);
+3. o último Admin não é rebaixado nem removido (`409`).
+
+A ordem importa: como a trava 2 vem antes da 3, a 3 é defesa em profundidade e
+hoje inalcançável pela API. Fica registrada em
+`Known limitations` do `backend/README.md`.
 
 Login tem rate limit de 10 tentativas por minuto por IP (janela fixa em memória,
 `429` ao estourar). É um freio para a demonstração, não um controle de

@@ -42,9 +42,60 @@ Authorization: Bearer {{token}}
 
 ###
 
+# Atualiza o próprio perfil. "role" no corpo é ignorado.
+PUT {{Api_HostAddress}}/api/auth/me HTTP/1.1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "email": "novo.email@cyberprotech.lab",
+  "bio": "Bio atualizada."
+}
+
+###
+
+# Troca a senha. Sem a senha atual correta responde 401.
+POST {{Api_HostAddress}}/api/auth/change-password HTTP/1.1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "CyberProtech@2026",
+  "newPassword": "OutraSenha@123"
+}
+
+###
+
+# --- Área administrativa (exige Admin) ------------------------------
+
+# Contagens do portal.
+GET {{Api_HostAddress}}/api/admin/stats HTTP/1.1
+Authorization: Bearer {{token}}
+
+###
+
+# Promove ou rebaixa. O papel precisa ser "Admin" ou "User".
+# Não dá para alterar o próprio papel nem rebaixar o último Admin.
+PUT {{Api_HostAddress}}/api/admin/users/3f6c1a52-8d1e-4b7a-9c0f-1a2b3c4d5e06/role HTTP/1.1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "role": "Admin"
+}
+
+###
+
 # --- Usuários (exigem autenticação) ---------------------------------
 
-GET {{Api_HostAddress}}/api/users HTTP/1.1
+# page começa em 1; pageSize vai de 1 a 100 (padrão 50).
+GET {{Api_HostAddress}}/api/users?page=1&pageSize=50 HTTP/1.1
+Authorization: Bearer {{token}}
+
+###
+
+# Filtra por usuário, e-mail ou papel.
+GET {{Api_HostAddress}}/api/users?search=admin&role=Admin HTTP/1.1
 Authorization: Bearer {{token}}
 
 ###

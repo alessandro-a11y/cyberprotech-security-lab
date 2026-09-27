@@ -20,6 +20,11 @@ public sealed class EfUserRepository(AppDbContext dbContext) : IUserRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
+    /// <remarks>
+    /// Igual a <see cref="GetByIdAsync"/>, mas devolve a entidade rastreada para
+    /// que alterações e remoções possam ser gravadas com
+    /// <see cref="SaveChangesAsync"/>. Não use para simples leitura.
+    /// </remarks>
     public async Task<User?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken = default) =>
         await dbContext.Users
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
@@ -43,10 +48,38 @@ public sealed class EfUserRepository(AppDbContext dbContext) : IUserRepository
         return await query.OrderBy(u => u.Username).ToListAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// Busca por usuário, ignorando maiúsculas/minúsculas. É o método usado
-    /// pelo login — por isso compara sem traduzir para o banco.
-    /// </summary>
+    public async Task<IReadOnlyList<User>> SearchAsync(
+        string? search,
+        string? role,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.Users.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = $"%{EscapeLikePattern(search.Trim())}%";
+
+            query = query.Where(u =>
+                EF.Functions.ILike(u.Username, term, LikeEscapeCharacter)
+                || EF.Functions.ILike(u.Email, term, LikeEscapeCharacter));
+        }
+
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            // Papel exato e sem caixa: a coluna guarda "Admin"/"User".
+            var normalizedRole = role.Trim();
+            query = query.Where(u => u.Role == normalizedRole);
+        }
+
+        return await query
+            .OrderBy(u => u.Username)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default) =>
         dbContext.Users
             .AsNoTracking()
@@ -64,6 +97,24 @@ public sealed class EfUserRepository(AppDbContext dbContext) : IUserRepository
             u => u.Username == normalizedUsername || u.Email == normalizedEmail,
             cancellationToken);
     }
+
+    /// <summary>
+    /// Verdadeiro quando o e-mail já pertence a <em>outro</em> usuário.
+    /// É o que o perfil precisa saber: reenviar o próprio e-mail não é conflito.
+    /// </summary>
+    public Task<bool> EmailInUseByOtherAsync(
+        string email,
+        Guid excludeUserId,
+        CancellationToken cancellationToken = default) =>
+        dbContext.Users.AnyAsync(
+            u => u.Email == Canonicalize(email) && u.Id != excludeUserId,
+            cancellationToken);
+
+    public Task<int> CountByRoleAsync(string role, CancellationToken cancellationToken = default) =>
+        dbContext.Users.CountAsync(u => u.Role == role, cancellationToken);
+
+    public Task<int> CountAsync(CancellationToken cancellationToken = default) =>
+        dbContext.Users.CountAsync(cancellationToken);
 
     /// <remarks>
     /// Username e e-mail são canonicalizados para minúsculas na gravação. Como o

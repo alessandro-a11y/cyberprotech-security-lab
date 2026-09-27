@@ -86,19 +86,34 @@ então nenhum desses comandos precisa de conexão válida para *gerar* código.
 
 ## Endpoints
 
-| Método | Rota                    | Acesso     | Descrição                          |
-|--------|-------------------------|------------|------------------------------------|
-| POST   | `/api/auth/register`    | público    | Cadastra e devolve token           |
-| POST   | `/api/auth/login`       | público    | Autentica e devolve token          |
-| GET    | `/api/auth/me`          | logado     | Usuário do token                   |
-| GET    | `/api/users`            | logado     | Lista / busca                      |
-| GET    | `/api/users/{id}`       | dono/Admin | Um usuário                         |
-| PUT    | `/api/users/{id}`       | Admin      | Atualiza a bio                     |
-| DELETE | `/api/users/{id}`       | Admin      | Remove                             |
-| GET    | `/api/health`           | público    | Liveness (não toca no banco)       |
-| GET    | `/api/health/ready`     | público    | Readiness (503 se o banco falhar)  |
+| Método | Rota                        | Acesso     | Descrição                          |
+|--------|-----------------------------|------------|------------------------------------|
+| POST   | `/api/auth/register`        | público    | Cadastra e devolve token           |
+| POST   | `/api/auth/login`           | público    | Autentica e devolve token          |
+| GET    | `/api/auth/me`              | logado     | Usuário do token                   |
+| PUT    | `/api/auth/me`              | logado     | Atualiza e-mail e bio próprios    |
+| POST   | `/api/auth/change-password` | logado     | Troca a senha exigindo a atual     |
+| GET    | `/api/users`                | logado     | Lista / busca, com paginação       |
+| GET    | `/api/users/{id}`           | dono/Admin | Um usuário                         |
+| PUT    | `/api/users/{id}`           | Admin      | Atualiza a bio                     |
+| DELETE | `/api/users/{id}`           | Admin      | Remove                             |
+| GET    | `/api/admin/stats`          | Admin      | Contagens do portal                |
+| PUT    | `/api/admin/users/{id}/role`| Admin      | Promove ou rebaixa                |
+| GET    | `/api/health`               | público    | Liveness (não toca no banco)       |
+| GET    | `/api/health/ready`         | público    | Readiness (503 se o banco falhar)  |
 
 O token vai no header: `Authorization: Bearer <token>`.
+
+### Paginação e filtros de `GET /api/users`
+
+| Parâmetro | Padrão | Limite  |
+|-----------|--------|---------|
+| `search`  | —      | 100 caracteres |
+| `role`    | —      | `Admin` ou `User`, exato e com caixa |
+| `page`    | `1`    | ≥ 1 |
+| `pageSize`| `50`   | 1 a 100 |
+
+Valores fora dos limites devolvem `400`, com mensagem dizendo qual foi o limite.
 
 ## Autenticação
 
@@ -140,6 +155,28 @@ virar laboratório, e a Fase 5 vai consertar:
   devolvendo 429;
 - `UserDto` nunca expõe `PasswordHash`; erros voltam como ProblemDetails sem
   stack trace nem SQL.
+
+### Known limitations
+
+Registradas de propósito, para a Fase 5 decidir o que fazer:
+
+- **Trocar a senha não invalida tokens emitidos.** O JWT é sem estado, então um
+  token anterior continua válido até expirar (`Jwt:ExpirationMinutes`, 60 min).
+  Revogar exigiria um `SecurityStamp` no usuário e uma consulta ao banco em
+  cada requisição autenticada — o que troca o JWT sem estado por stateful. A
+  alternativa mais barata é reduzir a validade e emitir token novo no login.
+- **O rate limit do login é por processo.** São 10 tentativas por minuto na
+  instância que atendeu a requisição. Com mais de uma réplica, o limite efetivo
+  é o número de réplicas vezes 10, e ele se perde no restart.
+- **As guardrails de "último Admin" são defesa em profundidade hoje
+  inalcançáveis.** A trava de auto-alteração dispara antes: para rebaixar o
+  último Admin seria preciso ser ele mesmo, o que já é barrado com `409`. Elas
+  continuam no código porque valem se a trava de auto-alteração um dia for
+  relaxada.
+- **Recuperação de lockout exige outro Admin.** Se o único Admin for removido
+  por manipulação direta no banco, não há caminho pela API para voltar. Um
+  cenário de *break-glass* (primeiro usuário a se promover quando não há
+  nenhum Admin) é decisão de produto, não de sprint.
 
 ## Integração com o frontend
 

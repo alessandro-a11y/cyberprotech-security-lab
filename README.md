@@ -79,13 +79,14 @@ cyberprotech-security-lab/
 └── README.md
 ```
 
-O que existe no backend até a Fase 2: arquitetura em quatro camadas,
+O que existe no backend até a Fase 3: arquitetura em quatro camadas,
 `User`, `AppDbContext` com migration inicial, seed dos usuários de exemplo,
 health check de liveness e readiness, tratamento global de erros, CORS,
 autenticação com BCrypt + JWT, papéis `Admin`/`User` com policies de
-autorização e rate limit no login. O frontend segue com 5 telas usando dados de
-exemplo; o toolkit, com CLI e módulos em esqueleto; o Compose, com `db`,
-`backend`, `frontend` e `toolkit` (sob demanda).
+autorização, rate limit no login, perfil do usuário (editar e-mail/bio e trocar
+senha) e a área administrativa (`/api/admin/stats` e troca de papel). O frontend
+segue com 5 telas usando dados de exemplo; o toolkit, com CLI e módulos em
+esqueleto; o Compose, com `db`, `backend`, `frontend` e `toolkit` (sob demanda).
 
 ## 8. Funcionalidades planejadas
 

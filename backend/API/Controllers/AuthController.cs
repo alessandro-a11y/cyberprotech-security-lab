@@ -131,6 +131,93 @@ public sealed class AuthController(
         return Ok(UserDto.FromEntity(user));
     }
 
+    /// <summary>
+    /// Atualiza o perfil de quem está logado. Só o próprio usuário, e só os
+    /// campos de <see cref="UpdateProfileRequest"/> — papel e usuário ficam de fora.
+    /// </summary>
+    [HttpPut("me")]
+    [Authorize]
+    [ProducesResponseType<UserDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<UserDto>> UpdateMe(
+        [FromBody] UpdateProfileRequest request,
+        CancellationToken cancellationToken)
+    {
+        var id = CurrentUserId();
+        if (id is null)
+        {
+            return Unauthorized();
+        }
+
+        if (await users.EmailInUseByOtherAsync(request.Email, id.Value, cancellationToken))
+        {
+            return Conflict(new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "E-mail já cadastrado.",
+            });
+        }
+
+        var user = await users.GetByIdForUpdateAsync(id.Value, cancellationToken);
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        user.Email = request.Email;
+        user.Bio = request.Bio;
+
+        await users.SaveChangesAsync(cancellationToken);
+
+        // Token novo: a resposta é autenticada, e o token antigo continua valendo
+        // até expirar (ver limitação registrada em backend/README.md).
+        var (token, expiresAt) = tokenService.CreateToken(user);
+
+        return Ok(new ProfileUpdateResponse(UserDto.FromEntity(user), token, expiresAt));
+    }
+
+    /// <summary>
+    /// Troca a senha de quem está logado, exigindo a senha atual.
+    /// </summary>
+    [HttpPost("change-password")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangePassword(
+        [FromBody] ChangePasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var id = CurrentUserId();
+        if (id is null)
+        {
+            return Unauthorized();
+        }
+
+        var user = await users.GetByIdForUpdateAsync(id.Value, cancellationToken);
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        // Sem a senha atual, um token vazado já seria suficiente para tomar a conta.
+        if (!passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Senha atual inválida.",
+            });
+        }
+
+        user.PasswordHash = passwordHasher.Hash(request.NewPassword);
+
+        await users.SaveChangesAsync(cancellationToken);
+
+        return NoContent();
+    }
+
     private Guid? CurrentUserId() =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
 }
