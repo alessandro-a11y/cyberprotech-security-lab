@@ -5,6 +5,7 @@ using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
 using Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;using Microsoft.Extensions.Configuration;
+using Npgsql;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure;
@@ -18,9 +19,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
-
-        services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContext<AppDbContext>(options => options.UseNpgsql(
+            MontarConnectionString(configuration)));
 
         services.AddScoped<IUserRepository, EfUserRepository>();
 
@@ -52,5 +52,43 @@ public static class DependencyInjection
         services.AddSingleton<BioSanitizer>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Monta a connection string aplicando o limite de pool, sem sobrescrever
+    /// o que já vier definido nela.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// O pool padrão do Npgsql é 100, exatamente o <c>max_connections</c> padrão
+    /// do PostgreSQL. Sob carga, a API ocupa todas as conexões e deixa
+    /// <c>psql</c>, pgAdmin e qualquer outro serviço sem entrada — foi o que o
+    /// teste de carga mostrou com 400 workers.
+    /// </para>
+    /// <para>
+    /// A conta é sempre <c>(réplicas × pool) &lt; max_connections</c>. Com pool
+    /// 20 e 3 réplicas, sobram 40 das 100 conexões.
+    /// </para>
+    /// </remarks>
+    internal static string MontarConnectionString(IConfiguration configuration)
+    {
+        var original = configuration.GetConnectionString("DefaultConnection");
+
+        if (string.IsNullOrWhiteSpace(original))
+        {
+            return original ?? string.Empty;
+        }
+
+        var construtor = new NpgsqlConnectionStringBuilder(original);
+
+        // TryParse, e não GetValue<int?>(): o binder lança exceção em valor não
+        // numérico, o que derrubaria a API na subida por causa de uma config
+        // errada. Um valor ilegível é ignorado, e o padrão do Npgsql vale.
+        if (int.TryParse(configuration["Database:MaxPoolSize"], out var pool) && pool > 0)
+        {
+            construtor.MaxPoolSize = pool;
+        }
+
+        return construtor.ConnectionString;
     }
 }

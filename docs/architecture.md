@@ -139,13 +139,14 @@ O Compose usa `/api/health` no `healthcheck` do container, e o frontend consome
 | `Database:MigrateOnStartup`       | `true`                 | aplica migrations ao subir              |
 | `Database:Seed`                   | `true`                 | popula usuários de exemplo se vazio    |
 | `Seed:Password`                   | `CyberProtech@2026`    | senha dos usuários de exemplo           |
+| `Database:MaxPoolSize`            | `20`                   | conexões por processo; réplicas × pool < `max_connections` |
 | `Lab:Enabled`                     | `false`                | interruptor mestre do laboratório       |
 | `Lab:VulnMode`                    | `false`                | estado inicial do modo vulnerável      |
 | `Lab:VerboseErrors`               | `false`                | estado inicial dos erros detalhados    |
 | `Lab:RateLimit`                   | `true`                 | estado inicial do limite de login      |
 | `Lab:SecurityHeaders`             | `true`                 | estado inicial dos headers              |
 | `Jwt:Issuer` / `Jwt:Audience`     | `cyberprotech-api` / `cyberprotech-web` | validação do token        |
-| `Jwt:SigningKey`                  | chave de laboratório   | assinatura HS256; mínimo 32 caracteres  |
+| `Jwt:SigningKey`                  | chave de laboratório   | assinatura HS256; mínimo 32 bytes        |
 | `Jwt:ExpirationMinutes`           | `60`                   | validade do token                       |
 | `Frontend:BaseUrl`                | `http://localhost:5173` | origem do CORS; aceita `;` ou `,` |
 
