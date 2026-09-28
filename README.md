@@ -69,9 +69,10 @@ cyberprotech-security-lab/
 ├── backend/            # API / Application / Domain / Infrastructure (ver backend/README.md)
 ├── frontend/           # React + Vite (Dockerfile + nginx.conf)
 ├── toolkit/            # Security Toolkit (Python)
-├── docs/               # architecture.md, integration.md, lab-guide.md, toolkit.md
+├── docs/               # architecture, integration, lab-guide, demo-guide, load-test, toolkit
 ├── docker/             # backend.Dockerfile, toolkit.Dockerfile
 ├── tests/backend/      # xUnit: unidade + integração (ver tests/README.md)
+├── tests/load/         # gerador de carga da API (ver docs/load-test.md)
 ├── .github/workflows/  # ci.yml
 ├── .env.example        # variáveis de exemplo (sem segredos)
 ├── .gitignore

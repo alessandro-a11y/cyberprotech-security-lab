@@ -18,6 +18,13 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- MontarConnectionString é internal de propósito (não é API pública da
+         camada), mas a suíte precisa testá-lo. -->
+    <InternalsVisibleTo Include="CyberProtech.Tests.Unit" />
+    <InternalsVisibleTo Include="CyberProtech.Tests.Integration" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
