@@ -67,7 +67,7 @@ A mensagem de erro da API é **exatamente** a que o `Login.jsx` já mostra
 
 Para redirecionar, `user.role` vem pronto: `"Admin"` ou `"User"`.
 
-Contas de teste (senha `CyberProtech@2026`):
+Contas de teste (senha: a que você definiu em `SEED_PASSWORD` no `.env`):
 
 | Usuário | Papel |
 |---|---|

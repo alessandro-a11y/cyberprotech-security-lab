@@ -14,10 +14,10 @@ namespace Infrastructure.Persistence;
 public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     /// <summary>
-    /// Conexão de fallback usada quando nada é configurado. Só desenvolvimento local.
+    /// Placeholder de design-time: nunca é usado pela API em execução.
     /// </summary>
     public const string FallbackConnectionString =
-        "Host=localhost;Port=5432;Database=cyberprotech_lab;Username=postgres;Password=changeme";
+        "Host=localhost;Database=placeholder;Username=placeholder;Password=placeholder";
 
     public AppDbContext CreateDbContext(string[] args)
     {

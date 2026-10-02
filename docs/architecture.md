@@ -58,8 +58,8 @@ Detalhes de setup, comandos de migration e a tabela de endpoints estão em
   `Database:Seed`. O seed só age se a tabela `users` estiver vazia.
 - Os Ids e as datas do seed são fixos e iguais aos dados de exemplo do frontend,
   para a demonstração ficar coerente com `VITE_USE_SAMPLE_DATA=false`.
-- Todos os usuários do seed compartilham a senha de `Seed:Password` (padrão
-  `CyberProtech@2026`), gravada com BCrypt.
+- Todos os usuários do seed compartilham a senha de `Seed:Password` (obrigatória,
+  vem do `.env`), gravada com BCrypt.
 
 ## Autenticação e autorização
 
@@ -138,7 +138,7 @@ O Compose usa `/api/health` no `healthcheck` do container, e o frontend consome
 | `ConnectionStrings:DefaultConnection` | credencial de exemplo | conexão Npgsql                          |
 | `Database:MigrateOnStartup`       | `true`                 | aplica migrations ao subir              |
 | `Database:Seed`                   | `true`                 | popula usuários de exemplo se vazio    |
-| `Seed:Password`                   | `CyberProtech@2026`    | senha dos usuários de exemplo           |
+| `Seed:Password`                   | obrigatória (do `.env`) | senha dos usuários de exemplo           |
 | `Database:MaxPoolSize`            | `20`                   | conexões por processo; réplicas × pool < `max_connections` |
 | `Lab:Enabled`                     | `false`                | interruptor mestre do laboratório       |
 | `Lab:VulnMode`                    | `false`                | estado inicial do modo vulnerável      |

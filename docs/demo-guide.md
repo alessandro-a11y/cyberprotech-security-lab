@@ -22,7 +22,7 @@ docker compose ps
 | Swagger | <http://localhost:5000/swagger> |
 | Readiness | <http://localhost:5000/api/health/ready> |
 
-Contas (senha `CyberProtech@2026`):
+Contas (senha: a que você definiu em `SEED_PASSWORD` no `.env`):
 
 | Usuário | Papel |
 |---|---|
@@ -58,7 +58,7 @@ Comprovar:
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:5000/api/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"username":"aluno01","password":"CyberProtech@2026"}' \
+  -d "{\"username\":\"aluno01\",\"password\":\"$SEED_PASSWORD\"}" \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 curl -s -o /dev/null -w "GET /api/admin/stats -> %{http_code}\n" \
@@ -163,7 +163,7 @@ laboratório é em memória. Para zerar na mão:
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:5000/api/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"CyberProtech@2026"}' \
+  -d "{\"username\":\"admin\",\"password\":\"$SEED_PASSWORD\"}" \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 curl -s -X PUT http://localhost:5000/api/lab/config \

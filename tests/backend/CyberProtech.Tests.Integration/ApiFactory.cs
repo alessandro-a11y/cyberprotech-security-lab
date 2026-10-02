@@ -80,6 +80,7 @@ public class ApiFactory : WebApplicationFactory<Program>
             ["Jwt:Issuer"] = "cyberprotech-api",
             ["Jwt:Audience"] = "cyberprotech-web",
             ["Database:Seed"] = "true",
+            ["Seed:Password"] = TestPassword,
             ["Database:MigrateOnStartup"] = "true",
             ["Lab:Enabled"] = "true",
             // Rate limit DESLIGADO por padrão nos testes. Com ele ligado, os
