@@ -72,6 +72,7 @@ jobs:
       - run: npm install
         if: hashFiles('frontend/package-lock.json') == ''
       - run: npm run build
+      - run: npm test
 
   toolkit:
     runs-on: ubuntu-latest

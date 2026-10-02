@@ -1,37 +1,55 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
-import { sampleApi, sampleUsers } from '../data/sampleUsers.js';
+import { sampleUsers } from '../data/sampleUsers.js';
+import { api } from '../api/client.js';
 import { getSession, startSession } from '../session.js';
 
-// MVP: entra com qualquer conta dos DADOS DE EXEMPLO e qualquer senha.
-// O login real contra a API (Fase 2) e os cenários de falha de
-// autenticação (Fase 3) substituem o handleSubmit.
+// Autenticação real contra POST /api/auth/login. A API devolve o token JWT
+// junto com o usuário; a sessão guarda os dois (ver session.js).
 export default function Login() {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
+  const [enviando, setEnviando] = useState(false);
 
   if (getSession()) {
     return <Navigate to="/" replace />;
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     if (!username.trim() || !password) {
       setError('Informe usuário e senha.');
       return;
     }
-    const user = sampleApi.findByUsername(username.trim());
-    if (!user) {
-      // Mensagem genérica: não revelar se o usuário existe.
-      setError('Usuário ou senha inválidos.');
-      return;
+
+    setError(null);
+    setEnviando(true);
+
+    try {
+      const resposta = await api.login(username.trim(), password);
+      startSession(resposta);
+      navigate('/', { replace: true });
+    } catch (err) {
+      // 429: o login tem rate limit de 10 tentativas por minuto por IP.
+      // Sem tratar aqui, a tela mostraria só "Usuário ou senha inválidos" e
+      // pareceria bug.
+      if (err.status === 429) {
+        setError('Muitas tentativas. Aguarde um minuto e tente de novo.');
+      } else if (err.status === 401) {
+        // A API devolve a mesma mensagem para usuário inexistente e senha
+        // errada, de propósito: não revela quais contas existem.
+        setError('Usuário ou senha inválidos.');
+      } else {
+        // O client.js já traduz falha de rede em mensagem utilizável.
+        setError(err.message ?? 'Não foi possível falar com a API.');
+      }
+    } finally {
+      setEnviando(false);
     }
-    startSession(user);
-    navigate('/', { replace: true });
   }
 
   return (
@@ -126,14 +144,16 @@ export default function Login() {
             </label>
 
             <div className="auth-row">
-              <label>
+              <label className="muted">
                 <input type="checkbox" /> Manter conectado
               </label>
-              <span>Esqueceu a senha?</span>
+              <span className="muted">
+                Senha dos exemplos: <code>CyberProtech@2026</code>
+              </span>
             </div>
 
-            <button type="submit" className="btn btn-primary btn-block">
-              Entrar <Icon name="arrowRight" size={16} />
+            <button type="submit" className="btn btn-primary btn-block" disabled={enviando}>
+              {enviando ? 'Entrando…' : 'Entrar'} <Icon name="arrowRight" size={16} />
             </button>
           </form>
 

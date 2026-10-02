@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { endSession, getSession, initials } from '../session.js';
+import { endSession, getSession, initials, isExpired } from '../session.js';
+import { api } from '../api/client.js';
 import Icon from './Icon.jsx';
 
 const sections = [
@@ -33,15 +34,76 @@ export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const session = getSession();
 
-  if (!session) {
+  // A sessão vive no localStorage, mas só a API sabe se o token ainda vale.
+  // Por isso o restore é assíncrono: primeiro conferimos, depois renderizamos.
+  // Sem isso, recarregar a página deixaria a interface montada com um token
+  // expirado e a primeira chamada já cairia em 401.
+  const [session, setSession] = useState(() => getSession());
+  const [conferindo, setConferindo] = useState(() => Boolean(getSession()));
+
+  useEffect(() => {
+    const atual = getSession();
+
+    if (!atual) {
+      setSession(null);
+      setConferindo(false);
+      return;
+    }
+
+    // Token expirado por data: nem vale a chamada.
+    if (isExpired()) {
+      endSession();
+      setSession(null);
+      setConferindo(false);
+      return;
+    }
+
+    let cancelado = false;
+    setConferindo(true);
+
+    api
+      .me()
+      .then((user) => {
+        if (cancelado) return;
+        // Confia na resposta da API, não no storage: se o usuário foi
+        // removido ou teve o papel alterado, a tela reflete o estado real.
+        setSession((s) => ({ ...s, ...user }));
+      })
+      .catch(() => {
+        if (cancelado) return;
+        // 401 (token inválido ou expirado) ou API fora do ar: nos dois casos
+        // a sessão local não serve mais.
+        endSession();
+        setSession(null);
+      })
+      .finally(() => !cancelado && setConferindo(false));
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  if (!session && !conferindo) {
     return <Navigate to="/login" replace />;
   }
 
   function logout() {
     endSession();
+    setSession(null);
     navigate('/login', { replace: true });
+  }
+
+  if (!session) {
+    // Enquanto confere, não mostra o esqueleto nem manda para o login: o
+    // usuário que acabou de entrar veria um piscar de tela.
+    return (
+      <div className="app">
+        <main className="content">
+          <div className="card">Conferindo sessão…</div>
+        </main>
+      </div>
+    );
   }
 
   return (
