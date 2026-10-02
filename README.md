@@ -131,12 +131,19 @@ Ferramenta própria (Python) para análises **passivas** no ambiente do laborat�
 Uso base (detalhes em [`docs/toolkit.md`](docs/toolkit.md)):
 
 ```bash
-pip install -r toolkit/requirements.txt
-PYTHONPATH=toolkit/src python -m toolkit.cli --target http://localhost:5000 --out report.json
+# Num venv: no Ubuntu o Python do sistema é "externally managed" e o pip
+# recusa instalar (PEP 668).
+python3 -m venv toolkit/.venv
+toolkit/.venv/bin/pip install -r toolkit/requirements.txt
+PYTHONPATH=toolkit/src toolkit/.venv/bin/python -m toolkit.cli --target http://localhost:5000 --out report.json
 
 # Via Docker (rede interna do Compose):
 docker compose --profile toolkit run --rm toolkit --target http://backend:8080
 ```
+
+> A sonda de `verbose-errors` registra um usuário descartável `scan_*` por
+> execução (é o erro de chave duplicada que provoca a resposta detalhada).
+> Para limpar depois: `DELETE FROM users WHERE "Username" LIKE 'scan\_%';`
 
 ## 11. Pré-requisitos
 
