@@ -20,7 +20,23 @@ def test_cookies_reporta_risco_do_desenho_bearer():
 def test_endpoints_mapeia_uma_rota_publica(monkeypatch):
     from toolkit import endpoints
     monkeypatch.setattr(endpoints, "request", lambda *_: (200, {}, ""))
-    assert len(endpoints.analyze_endpoints("http://lab")) == 2
+    assert len(endpoints.analyze_endpoints("http://lab")) == 3
+
+
+def test_endpoints_usa_get_e_nao_head(monkeypatch):
+    """HEAD em /swagger devolve 404 na API; com HEAD o achado nunca aparecia."""
+    from toolkit import endpoints
+
+    def fake(target, path, method="GET", body=None):
+        # Reproduz a API real: HEAD em /swagger* é 404, GET responde 200.
+        if method == "HEAD":
+            return 404, {}, ""
+        return 200, {}, ""
+
+    monkeypatch.setattr(endpoints, "request", fake)
+    mensagens = [f["message"] for f in endpoints.analyze_endpoints("http://lab")]
+    assert any("Swagger" in m for m in mensagens), mensagens
+    assert any("Readiness" in m for m in mensagens), mensagens
 
 
 def test_config_reconhece_modo_lab(monkeypatch):
