@@ -21,7 +21,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="CyberProtech Security Toolkit (uso educacional, ambiente controlado)."
     )
     parser.add_argument("--target", required=True, help="Alvo do laboratório, ex.: http://localhost:5000")
-    parser.add_argument("--out", default="report.json", help="Arquivo de saída do relatório (JSON).")
+    parser.add_argument("--out", default="report.json", help="Arquivo de saída (.json ou .md).")
     return parser
 
 
@@ -29,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     result = ToolkitScanner(target=args.target).run()
     write_report(result, Path(args.out))
-    print(f"Relatório (estrutura base) escrito em {args.out} para o alvo {args.target}")
+    print(f"Relatório escrito em {args.out} para o alvo {args.target}")
     return 0
 
 

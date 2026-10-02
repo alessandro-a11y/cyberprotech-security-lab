@@ -1,11 +1,9 @@
-"""Análise de cookies (Fase 4: a implementar).
-
-Verificações planejadas: flags Secure, HttpOnly e SameSite nos cookies
-emitidos pela aplicação do laboratório (ambiente controlado).
-"""
+"""Verificação do desenho de sessão Bearer usado pelo laboratório."""
 
 
 def analyze_cookies(target: str) -> list[dict]:
-    """Esqueleto: retorna lista vazia até a Fase 4."""
     _ = target
-    return []
+    # A API não emite Set-Cookie: JWT volta no corpo e o frontend o guarda em
+    # localStorage. Isso não é header ausente, mas um risco de desenho que o
+    # cenário de XSS demonstra; um cookie HttpOnly reduziria esse risco.
+    return [{"check": "session-design", "severity": "info", "message": "Sessão Bearer armazenada no localStorage; XSS pode ler o token. Cookies HttpOnly reduziriam esse risco."}]

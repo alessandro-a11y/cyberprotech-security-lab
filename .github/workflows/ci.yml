@@ -85,3 +85,4 @@ jobs:
           python-version: "3.12"
       - run: pip install -r toolkit/requirements.txt
       - run: python -m compileall toolkit/src
+      - run: PYTHONPATH=toolkit/src pytest tests/toolkit

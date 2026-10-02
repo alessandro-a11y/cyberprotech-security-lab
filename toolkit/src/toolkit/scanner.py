@@ -9,6 +9,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from toolkit.config_checks import analyze_config
+from toolkit.cookies import analyze_cookies
+from toolkit.endpoints import analyze_endpoints
+from toolkit.headers import analyze_headers
+
 
 @dataclass
 class Finding:
@@ -34,5 +39,7 @@ class ToolkitScanner:
         self.target = target
 
     def run(self) -> ScanResult:
-        """Fase 1: retorna estrutura vazia. Análises reais na Fase 4."""
-        return ScanResult(target=self.target, findings=[])
+        findings = []
+        for check in (analyze_headers, analyze_cookies, analyze_endpoints, analyze_config):
+            findings.extend(Finding(**item) for item in check(self.target))
+        return ScanResult(target=self.target, findings=findings)

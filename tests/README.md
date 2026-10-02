@@ -105,12 +105,15 @@ configuração do host e tem precedência.
 `ConfiguracaoDaFactoryTests` existe para pegar isso na hora se um dia voltar a
 acabar errado.
 
-## Ainda não existe
+## Toolkit
 
-Planejado, e fora do escopo até agora:
+Os testes unitários passivos do toolkit ficam em `tests/toolkit/` e são
+executados na CI junto com a compilação:
 
-- `tests/frontend/` — teste de build/smoke das telas
-- `tests/toolkit/` — pytest das análises (headers, cookies, endpoints, config)
+```bash
+PYTHONPATH=toolkit/src pytest tests/toolkit
+```
 
-O CI já compila o toolkit e faz o build do frontend; só falta testar
-comportamento.
+Para o teste de integração (opt-in), suba o laboratório com `Lab:Enabled=true`
+em `Development` e defina `CP_TOOLKIT_INTEGRATION_TARGET`. Ele alterna somente
+`securityHeaders` e sempre restaura o estado seguro no `finally`.
