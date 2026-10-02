@@ -28,6 +28,8 @@ export default function Admin() {
   const [toggles, setToggles] = useState([]);
   const [salvando, setSalvando] = useState(null);
   const [labErro, setLabErro] = useState(null);
+  const [userError, setUserError] = useState(null);
+  const [alterando, setAlterando] = useState(null);
 
   // Espelha o estado do servidor. Sem isso, a tela mostraria um switch ligado
   // enquanto a API está inteira no estado corrigido.
@@ -64,6 +66,21 @@ export default function Admin() {
     } finally {
       setSalvando(null);
     }
+  }
+
+  async function changeRole(user) {
+    setAlterando(user.id); setUserError(null);
+    try { await api.changeRole(user.id, user.role === 'Admin' ? 'User' : 'Admin'); users.reload(); stats.reload(); }
+    catch (err) { setUserError(err.message); }
+    finally { setAlterando(null); }
+  }
+
+  async function removeUser(user) {
+    if (!window.confirm(`Remover ${user.username}? Esta ação não pode ser desfeita.`)) return;
+    setAlterando(user.id); setUserError(null);
+    try { await api.deleteUser(user.id); users.reload(); stats.reload(); }
+    catch (err) { setUserError(err.message); }
+    finally { setAlterando(null); }
   }
 
   return (
@@ -132,6 +149,12 @@ export default function Admin() {
             </dd>
           </dl>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '1rem' }}>
+        <div className="card-header"><div><h2>Gerenciar contas</h2><p>Promova, rebaixe ou remova contas. A API preserva o último Admin.</p></div></div>
+        {userError && <div className="alert danger">{userError}</div>}
+        {users.loading ? <p className="muted">Carregando contas…</p> : <ul className="list">{list.map((user) => <li key={user.id}><span className="list-main"><span>{user.username}<small>{user.email} · {user.role}</small></span></span><span style={{ display: 'flex', gap: '.5rem' }}><button className="btn btn-ghost" disabled={session.role !== 'Admin' || user.id === session.id || alterando === user.id} onClick={() => changeRole(user)}>{user.role === 'Admin' ? 'Rebaixar' : 'Promover'}</button><button className="btn btn-ghost" disabled={session.role !== 'Admin' || user.id === session.id || alterando === user.id} onClick={() => removeUser(user)}>Remover</button></span></li>)}</ul>}
       </div>
 
       <div className="card" style={{ marginTop: '1rem' }}>

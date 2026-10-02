@@ -84,6 +84,16 @@ export default function Layout() {
     };
   }, []);
 
+  useEffect(() => {
+    function onUnauthorized() {
+      endSession();
+      setSession(null);
+      navigate('/login', { replace: true });
+    }
+    window.addEventListener('cp:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('cp:unauthorized', onUnauthorized);
+  }, [navigate]);
+
   if (!session && !conferindo) {
     return <Navigate to="/login" replace />;
   }

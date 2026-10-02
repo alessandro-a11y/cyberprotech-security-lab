@@ -1,5 +1,5 @@
 import { sampleApi } from '../data/sampleUsers.js';
-import { getToken } from '../session.js';
+import { endSession, getToken } from '../session.js';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
@@ -61,7 +61,15 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
 
   if (!response.ok) {
     const fallback = `A API respondeu ${response.status} em ${path}`;
-    throw new ApiError(await mensagemDe(response, fallback), response.status);
+    const error = new ApiError(await mensagemDe(response, fallback), response.status);
+    // Login e cadastro são públicos: um 401 ali é uma mensagem de credencial,
+    // não uma sessão expirada. Nas demais chamadas, não manter um JWT inválido
+    // evita deixar a pessoa presa numa tela que só responde 401.
+    if (response.status === 401 && auth) {
+      endSession();
+      window.dispatchEvent(new Event('cp:unauthorized'));
+    }
+    throw error;
   }
 
   // DELETE devolve 204 sem corpo; GET em lista de 0 itens devolve [].

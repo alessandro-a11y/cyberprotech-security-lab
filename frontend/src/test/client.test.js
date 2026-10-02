@@ -60,6 +60,13 @@ describe('client.js', () => {
       );
     });
 
+    it('não encerra sessão ao receber 401 do login público', async () => {
+      startSession(SESSAO);
+      fetch.mockResolvedValue(responder(401, { title: 'Usuário ou senha inválidos.' }));
+      await api.login('admin', 'errada').catch(() => {});
+      expect(localStorage.getItem('cp_session')).not.toBeNull();
+    });
+
     it('preserva o status 429 (o Login.jsx depende dele)', async () => {
       fetch.mockResolvedValue(responder(429, { title: 'Muitas tentativas.' }));
 
@@ -102,6 +109,12 @@ describe('client.js', () => {
 
       expect(fetch.mock.calls[0][0]).toBe(`${BASE}/api/auth/me`);
       expect(usuario.id).toBe('uuid-1');
+    });
+
+    it('limpa a sessão quando uma rota protegida devolve 401', async () => {
+      fetch.mockResolvedValue(responder(401, { title: 'Expirado' }));
+      await api.me().catch(() => {});
+      expect(localStorage.getItem('cp_session')).toBeNull();
     });
 
     it('updateProfile usa PUT com o corpo', async () => {

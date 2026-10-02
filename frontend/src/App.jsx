@@ -7,12 +7,13 @@ import Login from './pages/Login.jsx';
 import Profile from './pages/Profile.jsx';
 import ToolkitResults from './pages/ToolkitResults.jsx';
 import Users from './pages/Users.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 // Login fica fora do Layout (tela cheia). As demais rotas exigem a
 // sessão de protótipo; o login real entra na Fase 2.
 export default function App() {
   return (
-    <Routes>
+    <ErrorBoundary><Routes>
       <Route path="login" element={<Login />} />
       <Route element={<Layout />}>
         <Route index element={<Dashboard />} />
@@ -24,6 +25,6 @@ export default function App() {
         <Route path="toolkit" element={<ToolkitResults />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
-    </Routes>
+    </Routes></ErrorBoundary>
   );
 }

@@ -29,10 +29,10 @@ export default function Dashboard() {
   const session = getSession();
   const health = useRequest(api.getHealth);
   const users = useRequest(api.getUsers);
+  const stats = useRequest(api.getStats);
 
   const userList = users.data ?? [];
-  const admins = userList.filter((u) => u.role?.toLowerCase() === 'admin').length;
-  const fixed = vulnerabilities.filter((v) => v.status === 'corrigido').length;
+  const admins = stats.data?.admins ?? 0;
   const online = !health.loading && !health.error;
 
   return (
@@ -55,8 +55,8 @@ export default function Dashboard() {
       <div className="grid grid-stats">
         <Stat
           label="Usuários"
-          value={users.loading ? '…' : users.error ? '—' : userList.length}
-          foot={users.error ? 'API indisponível' : `${admins} administrador(es)`}
+          value={stats.loading ? '…' : stats.error ? '—' : (stats.data?.totalUsers ?? userList.length)}
+          foot={stats.error ? 'estatísticas indisponíveis' : `${admins} administrador(es)`}
           icon="users"
           tone="cyan"
         />
@@ -76,8 +76,8 @@ export default function Dashboard() {
         />
         <Stat
           label="Corrigidas"
-          value={`${fixed}/${vulnerabilities.length}`}
-          foot="validadas pelo toolkit"
+          value="em tempo real"
+          foot="consulte o Laboratório"
           icon="shieldCheck"
           tone="warn"
         />
@@ -136,7 +136,7 @@ export default function Dashboard() {
                   <span className={`badge ${severityBadge[v.severity].tone}`}>
                     {severityBadge[v.severity].label}
                   </span>
-                  <span className={`badge ${statusBadge[v.status].tone}`}>{statusBadge[v.status].label}</span>
+                  <span className="badge">estado no Laboratório</span>
                 </span>
               </li>
             ))}
