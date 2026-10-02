@@ -24,7 +24,17 @@ def to_json(result: ScanResult) -> str:
     )
 
 
+def to_markdown(result: ScanResult) -> str:
+    """Relatório legível pela tela do portal e por revisão humana."""
+    lines = ["# Relatório do Security Toolkit", "", f"Alvo: `{result.target}`", "", "| Severidade | Checagem | Achado |", "|---|---|---|"]
+    lines.extend(f"| {item.severity} | {item.check} | {item.message} |" for item in result.findings)
+    if not result.findings:
+        lines.append("| info | scanner | Nenhum achado nas verificações passivas. |")
+    return "\n".join(lines) + "\n"
+
+
 def write_report(result: ScanResult, output: Path) -> Path:
-    """Escreve o relatório em disco (JSON por padrão na Fase 1)."""
-    output.write_text(to_json(result) + "\n", encoding="utf-8")
+    """Escreve JSON ou Markdown conforme a extensão pedida."""
+    content = to_markdown(result) if output.suffix.lower() in {".md", ".markdown"} else to_json(result) + "\n"
+    output.write_text(content, encoding="utf-8")
     return output

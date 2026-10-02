@@ -60,6 +60,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # O Vite assa import.meta.env.* no build, então estes valores precisam
+        # entrar como build args. Sem eles o container usaria o padrão do
+        # código (dados de exemplo) e a integração pareceria quebrada.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:5000}
+        VITE_USE_SAMPLE_DATA: ${VITE_USE_SAMPLE_DATA:-false}
     restart: unless-stopped
     depends_on:
       - backend

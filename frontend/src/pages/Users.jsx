@@ -18,6 +18,9 @@ export default function Users() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
+  const [creating, setCreating] = useState(false);
+  const [newUser, setNewUser] = useState({ username: '', email: '', password: '', bio: '' });
+  const [createError, setCreateError] = useState(null);
 
   // A busca é feita pela API (GET /api/users?search=), não no navegador:
   // é o ponto de entrada do cenário de SQL Injection (Fase 3).
@@ -27,7 +30,7 @@ export default function Users() {
     setError(null);
     const timer = setTimeout(() => {
       api
-        .getUsers(query)
+        .getUsers(query, { role: filter === 'all' ? undefined : filter === 'admin' ? 'Admin' : 'User' })
         .then((users) => !cancelled && setData(users))
         .catch((err) => !cancelled && setError(err.message))
         .finally(() => !cancelled && setLoading(false));
@@ -36,9 +39,20 @@ export default function Users() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query, attempt]);
+  }, [query, filter, attempt]);
 
-  const users = (data ?? []).filter((u) => filter === 'all' || u.role?.toLowerCase() === filter);
+  const users = data ?? [];
+
+  async function createUser(event) {
+    event.preventDefault();
+    setCreateError(null);
+    try {
+      await api.register(newUser);
+      setNewUser({ username: '', email: '', password: '', bio: '' });
+      setCreating(false);
+      setAttempt((n) => n + 1);
+    } catch (err) { setCreateError(err.message); }
+  }
 
   return (
     <>
@@ -48,12 +62,23 @@ export default function Users() {
           <h1>Usuários</h1>
           <p>Contas cadastradas no portal. Busca via GET /api/users?search=.</p>
         </div>
-        <button className="btn btn-primary" disabled title="Cadastro entra na Fase 2">
+        <button className="btn btn-primary" onClick={() => setCreating((open) => !open)} aria-expanded={creating}>
           <Icon name="plus" size={16} /> Novo usuário
         </button>
       </div>
 
       <SampleDataNote />
+
+      {creating && <form className="card stack" style={{ marginBottom: '1rem' }} onSubmit={createUser}>
+        <div className="card-header"><h2>Cadastrar usuário</h2><span className="badge cyan">sempre User</span></div>
+        {createError && <div className="alert danger">{createError}</div>}
+        <div className="form-grid">
+          {/* A API aceita de 8 a 128 caracteres; o cliente aplica o mesmo contrato. */}
+          {[['username', 'Usuário'], ['email', 'E-mail'], ['password', 'Senha']].map(([field, label]) => <label className="field" key={field}>{label}<input required minLength={field === 'password' ? 8 : undefined} type={field === 'password' ? 'password' : field === 'email' ? 'email' : 'text'} className="input" value={newUser[field]} onChange={(e) => setNewUser({ ...newUser, [field]: e.target.value })} /></label>)}
+          <label className="field">Bio (opcional)<input className="input" value={newUser.bio} onChange={(e) => setNewUser({ ...newUser, bio: e.target.value })} /></label>
+        </div>
+        <div><button className="btn btn-primary" type="submit">Cadastrar</button></div>
+      </form>}
 
       <div className="toolbar">
         <span className="input-wrap">

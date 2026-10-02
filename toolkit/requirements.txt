@@ -1,3 +1,4 @@
 # Dependências mínimas do toolkit (Fase 1: somente base).
 # Clientes HTTP e libs de relatório entram na Fase 4.
 requests>=2.31
+pytest>=8.0

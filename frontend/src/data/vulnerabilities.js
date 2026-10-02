@@ -1,5 +1,5 @@
-// Cenários do laboratório (Fase 3). `status` evolui conforme o time avança:
-// 'planejado' → 'vulneravel' → 'corrigido'.
+// Metadados estáveis dos cenários. O status vem de GET /api/lab/config, pois
+// é estado de runtime e não uma etapa fixa do projeto.
 export const vulnerabilities = [
   {
     id: 'sqli',
@@ -8,7 +8,6 @@ export const vulnerabilities = [
     severity: 'critica',
     icon: 'database',
     description: 'Consulta montada por concatenação de string no login ou na busca de usuários.',
-    status: 'planejado',
   },
   {
     id: 'xss',
@@ -17,7 +16,6 @@ export const vulnerabilities = [
     severity: 'alta',
     icon: 'terminal',
     description: 'Campo de perfil renderizado sem escape, executando script no navegador de quem visualiza.',
-    status: 'planejado',
   },
   {
     id: 'idor',
@@ -26,7 +24,6 @@ export const vulnerabilities = [
     severity: 'critica',
     icon: 'key',
     description: 'Endpoint /api/users/{id} devolve dados de outro usuário sem checar o dono da sessão.',
-    status: 'planejado',
   },
   {
     id: 'auth',
@@ -35,7 +32,6 @@ export const vulnerabilities = [
     severity: 'alta',
     icon: 'lock',
     description: 'Sem limite de tentativas, senhas fracas aceitas e sessão sem expiração.',
-    status: 'planejado',
   },
   {
     id: 'misconfig',
@@ -44,7 +40,6 @@ export const vulnerabilities = [
     severity: 'media',
     icon: 'settings',
     description: 'Headers de segurança ausentes, CORS aberto e stack trace exposto em erro.',
-    status: 'planejado',
   },
   {
     id: 'exposure',
@@ -53,7 +48,6 @@ export const vulnerabilities = [
     severity: 'media',
     icon: 'eye',
     description: 'Dados sensíveis devolvidos pela API além do necessário e segredos em configuração.',
-    status: 'planejado',
   },
 ];
 
@@ -67,4 +61,5 @@ export const statusBadge = {
   planejado: { label: 'planejado', tone: '' },
   vulneravel: { label: 'vulnerável', tone: 'danger' },
   corrigido: { label: 'corrigido', tone: 'green' },
+  desconhecido: { label: 'não consultado', tone: '' },
 };
