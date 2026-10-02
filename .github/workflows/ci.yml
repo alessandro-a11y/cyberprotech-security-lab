@@ -64,7 +64,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # 20 saiu de suporte em abril de 2026, e o jsdom usado pelos testes
+          # precisa de uma API do Node 22 em diante (webidl.util.markAsUncloneable).
+          node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
