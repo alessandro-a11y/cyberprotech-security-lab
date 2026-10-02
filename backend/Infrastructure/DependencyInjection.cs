@@ -76,7 +76,7 @@ public static class DependencyInjection
 
         if (string.IsNullOrWhiteSpace(original))
         {
-            return original ?? string.Empty;
+            throw new InvalidOperationException("ConnectionStrings:DefaultConnection é obrigatória.");
         }
 
         var construtor = new NpgsqlConnectionStringBuilder(original);

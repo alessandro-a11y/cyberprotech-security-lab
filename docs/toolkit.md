@@ -38,8 +38,8 @@ variável ele é pulado, e por isso **não roda na CI**. Ele alterna
 **falha** por `ConnectionError`, e não passa vazio — foi assim que uma asserção
 errada dele passou meses sem ninguém ver.
 
-Variáveis: `CP_TOOLKIT_ADMIN` (padrão `admin`) e `CP_TOOLKIT_PASSWORD`
-(padrão `CyberProtech@2026`).
+Variáveis: `CP_TOOLKIT_ADMIN` (padrão `admin`) e `CP_TOOLKIT_PASSWORD` (padrão:
+o valor de `SEED_PASSWORD` no seu `.env`).
 
 ## Módulos
 

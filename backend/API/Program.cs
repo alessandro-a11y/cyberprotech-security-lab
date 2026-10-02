@@ -24,7 +24,7 @@ builder.Services
     .AddHealthChecks()
     .AddNpgSql(
         builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? AppDbContextFactory.FallbackConnectionString,
+        ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection é obrigatória."),
         name: "database",
         tags: ["database"]);
 

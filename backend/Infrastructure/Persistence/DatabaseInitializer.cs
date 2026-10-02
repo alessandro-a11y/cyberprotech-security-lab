@@ -41,13 +41,12 @@ public static class DatabaseInitializer
 
         if (configuration.GetValue("Database:Seed", true))
         {
-            var seedPassword = configuration.GetValue("Seed:Password", DefaultSeedPassword) ?? DefaultSeedPassword;
+            var seedPassword = configuration["Seed:Password"]
+                ?? throw new InvalidOperationException("Seed:Password é obrigatória quando Database:Seed=true.");
 
             await SeedAsync(dbContext, passwordHasher, seedPassword, logger, cancellationToken);
         }
     }
-
-    private const string DefaultSeedPassword = "CyberProtech@2026";
 
     private static async Task SeedAsync(
         AppDbContext dbContext,
