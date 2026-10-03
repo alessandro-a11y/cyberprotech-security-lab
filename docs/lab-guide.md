@@ -28,9 +28,10 @@ Na interface, a tela de Administração lê `GET /api/lab/config` e liga/desliga
 com `PUT /api/lab/config`:
 
 ```bash
+SEED_PASSWORD=$(grep '^SEED_PASSWORD=' .env | cut -d= -f2-)
 TOKEN=$(curl -s -X POST http://localhost:5000/api/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"CyberProtech@2026"}' \
+  -d "{\"username\":\"admin\",\"password\":\"$SEED_PASSWORD\"}" \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 # liga o modo vulnerável

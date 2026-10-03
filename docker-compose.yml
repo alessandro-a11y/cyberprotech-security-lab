@@ -12,7 +12,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-cyberprotech_lab}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -37,13 +37,13 @@ services:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-cyberprotech_lab};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-changeme}
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-cyberprotech_lab};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env}
       Frontend__BaseUrl: ${FRONTEND_URL:-http://localhost:5173}
       # Chave de assinatura do JWT. Fora do laboratório, gere uma nova por ambiente:
       #   openssl rand -base64 48
-      Jwt__SigningKey: ${JWT_SIGNING_KEY:-dev-only-signing-key-troque-em-producao-0001}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Defina JWT_SIGNING_KEY no .env}
       # Senha dos usuários de exemplo do seed.
-      Seed__Password: ${SEED_PASSWORD:-CyberProtech@2026}
+      Seed__Password: ${SEED_PASSWORD:?Defina SEED_PASSWORD no .env}
       # Interruptor mestre do laboratório. "true" permite alternar os controles
       # inseguros, mas a gravacao tambem exige ASPNETCORE_ENVIRONMENT=Development.
       Lab__Enabled: ${LAB_ENABLED:-true}

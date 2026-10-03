@@ -42,8 +42,8 @@ com seis usuários de exemplo. Para desligar esse comportamento:
 
 ## Usuários de exemplo
 
-Todos compartilham a senha definida em `Seed:Password`
-(`CyberProtech@2026` por padrão).
+Todos compartilham a senha definida em `Seed:Password` (obrigatória, vem do
+`.env`; não existe senha padrão versionada).
 
 | Usuário      | Papel |
 |--------------|-------|

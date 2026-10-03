@@ -119,10 +119,10 @@ public class JwtOptionsValidationTests
     }
 
     [Fact]
-    public void A_chave_padrao_de_desenvolvimento_e_valida()
+    public void Appsettings_nao_versiona_chave_de_assinatura()
     {
-        // O valor em appsettings.json precisa passar na própria validação, senão
-        // o `docker compose up` do zero não sobe a API.
+        // Produção recebe a chave do ambiente ou de um provedor de segredos;
+        // appsettings rastreado não pode conter uma chave reutilizável.
         var raiz = LocalizarRaizDoRepositorio();
         var caminho = Path.Combine(raiz, "backend", "API", "appsettings.json");
 
@@ -132,9 +132,7 @@ public class JwtOptionsValidationTests
         var settings = config.GetSection("Jwt").Get<JwtSettings>();
 
         Assert.NotNull(settings);
-        Assert.True(
-            System.Text.Encoding.UTF8.GetByteCount(settings!.SigningKey) >= 32,
-            "A chave padrão de desenvolvimento é recusada pela própria validação.");
+        Assert.True(string.IsNullOrWhiteSpace(settings!.SigningKey));
     }
 
     /// <summary>
@@ -236,11 +234,27 @@ public class PoolDeConexaoTests
     }
 
     [Fact]
-    public void Connection_string_ausente_nao_quebra()
+    public void Connection_string_ausente_derruba_a_subida()
     {
-        var resultado = Montar(new Dictionary<string, string?>());
+        // Antes devolvia string.Empty e a API subia sem banco, para só falhar
+        // depois no health check. Falhar aqui diz o que falta, na hora de
+        // carregar a configuração.
+        var excecao = Assert.Throws<InvalidOperationException>(
+            () => Montar(new Dictionary<string, string?>()));
 
-        Assert.Equal(string.Empty, resultado);
+        Assert.Contains("DefaultConnection", excecao.Message);
+    }
+
+    [Fact]
+    public void Connection_string_em_branco_derruba_a_subida()
+    {
+        var excecao = Assert.Throws<InvalidOperationException>(
+            () => Montar(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:DefaultConnection"] = "   ",
+            }));
+
+        Assert.Contains("DefaultConnection", excecao.Message);
     }
 
     [Fact]
