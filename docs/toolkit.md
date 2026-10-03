@@ -2,7 +2,9 @@
 
 O toolkit faz checagens HTTP passivas contra o laboratório. A única sonda ativa
 é um par de cadastros idênticos, inofensivos e descartáveis, necessário para
-verificar se `verbose-errors` expõe stack trace.
+verificar se `verbose-errors` expõe stack trace. Ela é o caminho de demonstração
+do cenário: a tela de cadastro não reproduz o vazamento, pois trata e-mails já
+existentes antes de alcançar a violação de unicidade no banco.
 Ele verifica headers, cookies emitidos sem credenciais, superfícies públicas e
 configuração observável. Não envia payloads de exploração.
 
