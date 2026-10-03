@@ -258,8 +258,8 @@ expõe stack trace. Nenhum payload de exploração é enviado.
 
 | Estado       | Achados |
 |--------------|---------|
-| Corrigido    | **4**   |
-| Vulnerável   | **9**   |
+| Corrigido    | **6**   |
+| Vulnerável   | **11**  |
 
 Diferença entre os estados — **7 achados que desaparecem ao corrigir:**
 
@@ -275,6 +275,14 @@ Diferença entre os estados — **7 achados que desaparecem ao corrigir:**
 
 1. CSP permite `unsafe-inline` em `script-src` — **high** (ver Limitações)
 2. CSP permite `unsafe-inline` em `style-src` — **low**
+
+**4 achados independentes do toggle**, presentes nos dois estados porque não
+dependem dos controles do laboratório:
+
+1. Swagger está exposto sem autenticação — `low` (só existe em `Development`)
+2. Documento OpenAPI está exposto sem autenticação — `low` (idem)
+3. Readiness endpoint responde sem autenticação — `info`
+4. Sessão Bearer armazenada no `localStorage`; XSS pode ler o token — `info`
 
 ### Ressalva operacional
 
@@ -439,6 +447,15 @@ Dois pontos reais que sobraram, na ordem de risco:
    CSP mais restritiva (com nonce ou hash) e confirmar que as telas continuam
    funcionando. Enquanto isso, o scanner acusa um achado `high` legítimo a
    cada execução.
+
+   **Esse teste já foi feito** (ver Limitações, item 1): o build de produção
+   servido por nginx **não tem nenhum script nem style inline**, e a API e o
+   portal seguem funcionando com `script-src 'self'`. Só que endurecer a CSP
+   **mata a demonstração do cenário de XSS**, porque sem `unsafe-inline` o
+   navegador bloqueia o payload inline mesmo no modo vulnerável. A remoção é
+   tecnicamente correta e pedagogicamente ruim: para demonstrar o XSS seria
+   preciso desligar também o controle de headers de segurança. Fica registrado
+   como decisão consciente, não comoteste pendente.
 
 2. **Decidir o destino do token (`localStorage` vs. cookie `HttpOnly`).** O
    token em `localStorage` é legível por XSS — o próprio cenário de XSS do
