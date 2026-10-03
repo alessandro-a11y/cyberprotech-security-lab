@@ -124,9 +124,17 @@ autenticação.
 
 ### 7. Exposição de informações (1 min)
 
-1. Com **Erros detalhados** ligado, provocar um erro (cadastrar um e-mail já
-   existente em paralelo cria conflito de unicidade).
-2. Mostrar o corpo da resposta com `exception`, `stackTrace` e `sqlState`.
+Este cenário é demonstrado **por linha de comando**, não pela tela. Com **Erros
+detalhados** ligado, rode duas requisições de cadastro idênticas em paralelo:
+
+```bash
+payload='{"username":"probe_verbose","email":"probe_verbose@lab.invalid","password":"Toolkit1!"}'
+for i in 1 2; do curl -sS -X POST http://localhost:5000/api/auth/register -H 'Content-Type: application/json' -d "$payload" & done; wait
+```
+
+A primeira cria o usuário; a segunda viola a chave de unicidade no banco e
+mostra `exception`, `stackTrace` e `sqlState`. A sonda `verbose-errors` do
+Security Toolkit provoca exatamente essa condição.
 
 **Falar:** no estado corrigido o corpo é genérico e o detalhe vai só para o log.
 Aqui o vazamento é **integral** quando pedido, nunca parcial.

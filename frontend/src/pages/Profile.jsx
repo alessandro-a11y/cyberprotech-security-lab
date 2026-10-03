@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { api } from '../api/client.js';
+import { useRequest } from '../api/useRequest.js';
 import Icon from '../components/Icon.jsx';
 import SampleDataNote from '../components/SampleDataNote.jsx';
 import { getSession, initials, updateToken } from '../session.js';
@@ -13,6 +14,7 @@ export default function Profile() {
   const session = getSession();
   const [user, setUser] = useState(null);
   const [error, setError] = useState(null);
+  const lab = useRequest(api.getLabConfig);
 
   // Edição do próprio perfil: só email e bio. Username é somente-leitura
   // (a API ignora) e role/password não passam por este endpoint.
@@ -101,6 +103,8 @@ export default function Profile() {
 
   const isOwn = id === session.id;
   const since = new Date(session.since).toLocaleString('pt-BR');
+  const vulnMode = lab.data?.toggles?.some((toggle) => toggle.id === 'vuln-mode' && toggle.on) ?? false;
+  const bioExibida = user?.bio || 'Sem bio.';
 
   return (
     <>
@@ -165,9 +169,16 @@ export default function Profile() {
               <div className="card-header">
                 <h2>Bio</h2>
               </div>
-              {/* Renderizada como texto (React escapa). O cenário de XSS da
-                  Fase 3 troca por HTML sem escape, só no modo vulnerável. */}
-              <p className={user.bio ? undefined : 'muted'}>{user.bio || 'Sem bio.'}</p>
+              {/* Vulnerabilidade intencional: com vuln-mode ligado, a Fase 3
+                  renderiza HTML não confiável. Corrigido: React o escapa como texto. */}
+              {vulnMode ? (
+                <p
+                  className={user.bio ? undefined : 'muted'}
+                  dangerouslySetInnerHTML={{ __html: bioExibida }}
+                />
+              ) : (
+                <p className={user.bio ? undefined : 'muted'}>{bioExibida}</p>
+              )}
             </div>
 
             <form className="card" onSubmit={salvarPerfil}>

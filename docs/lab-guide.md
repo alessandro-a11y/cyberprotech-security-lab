@@ -110,7 +110,7 @@ O aviso de "área restrita" que a tela de Administração exibe hoje descreve o
 **frontend**, não a API: `AdminController` exige `AdminOnly` em qualquer
 momento. O IDOR é só na leitura de usuário.
 
-### 3. XSS armazenado — `vuln-mode` (componente da API)
+### 3. XSS armazenado — `vuln-mode` (frontend com defesa na API)
 
 **OWASP A03:2021 · alta**
 
@@ -129,10 +129,14 @@ curl -X PUT http://localhost:5000/api/auth/me \
   -d '{"email":"aluno01@cyberprotech.lab","bio":"<script>alert(document.cookie)</script>"}'
 ```
 
-| Estado | Bio gravada |
-|---|---|
-| corrigido | `alert(document.cookie)` — tags removidas |
-| vulnerável | `<script>alert(document.cookie)</script>` |
+| Estado | Bio gravada | O que aparece na tela |
+|---|---|---|
+| corrigido | `alert(document.cookie)` — tags removidas | o texto `alert(document.cookie)`, sem executar |
+| vulnerável | `<script>alert(document.cookie)</script>` | o HTML é executado: o alert dispara no navegador |
+
+Esta é a única diferença que se vê **clicando**: em `/profile`, com o
+`vuln-mode` ligado, salvar a bio com payload e recarregar a página executa o
+script. Com o controle desligado, o mesmo payload aparece como texto inerte.
 
 Dois pontos para a apresentação:
 
@@ -190,11 +194,23 @@ curl -I http://localhost:5000/api/health
 **OWASP A02:2021 · média**
 
 Com o controle ligado, o corpo do erro passa a trazer a exceção, o stack trace
-e a mensagem do PostgreSQL — incluindo o SQL que o banco recusou.
+e a mensagem do PostgreSQL — incluindo o SQL que o banco recusou. A demonstração
+é **somente por linha de comando**: o cadastro pela tela trata antecipadamente
+um e-mail existente e devolve o mesmo `409` nos dois estados.
 
 ```bash
-# provoke um 409 disparando o handler de exceção com dois cadastros concorrentes
+payload='{"username":"probe_verbose","email":"probe_verbose@lab.invalid","password":"Toolkit1!"}'
+for i in 1 2; do
+  curl -sS -X POST http://localhost:5000/api/auth/register \
+    -H 'Content-Type: application/json' -d "$payload" &
+done
+wait
 ```
+
+As duas requisições precisam ser paralelas: a primeira cria o usuário, e a
+segunda disputa a mesma chave primária no banco, provocando a exceção que o
+modo vulnerável expõe. Este é o mesmo caminho usado pela sonda
+`verbose-errors` do Security Toolkit.
 
 | Estado | Corpo do erro |
 |---|---|
@@ -225,8 +241,8 @@ verificação real contra o PostgreSQL.
 | XSS `onerror=` | `vuln-mode` | removido | intacto |
 | Força bruta no login | `rate-limit` | `429` após 10 | nenhum `429` |
 | Headers de segurança | `sec-headers` | 5 headers | nenhum |
-| Erro com stack trace | `verbose-errors` | genérico | `exception` + `stackTrace` |
-| `SQLSTATE` no corpo | `verbose-errors` | ausente | presente |
+| Erro com stack trace (linha de comando) | `verbose-errors` | genérico | `exception` + `stackTrace` |
+| `SQLSTATE` no corpo (linha de comando) | `verbose-errors` | ausente | presente |
 | Admin em `/api/admin/*` | — | `403` | `403` (não é cenário) |
 
 ## O que **não** é cenário
